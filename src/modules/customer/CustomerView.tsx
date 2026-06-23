@@ -10,6 +10,7 @@ import {
   Paperclip,
   Send,
   PhoneCall,
+  Star,
 } from "lucide-react";
 import { useGlobalContext } from "../../hooks/useGlobalContext";
 import { Button } from "../../components/ui/Button";
@@ -29,6 +30,7 @@ export const CustomerView = () => {
     isTyping,
     endChatCustomer,
     requestCallback,
+    submitTicketFeedback,
   } = useGlobalContext();
   const [inputText, setInputText] = useState("");
   const [callbackData, setCallbackData] = useState({
@@ -36,6 +38,9 @@ export const CustomerView = () => {
     preferredTime: "",
     notes: "",
   });
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackHover, setFeedbackHover] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,7 +72,20 @@ export const CustomerView = () => {
 
   const handleCustomerEndChat = () => {
     if (customerActiveTicketId) endChatCustomer(customerActiveTicketId);
-    setIsChatOpen(false);
+  };
+
+  const handleFeedbackSubmit = () => {
+    if (customerActiveTicketId && feedbackRating > 0) {
+      submitTicketFeedback(
+        customerActiveTicketId,
+        feedbackRating,
+        feedbackComment,
+      );
+      setIsChatOpen(false);
+      setCustomerActiveTicketId(null);
+      setFeedbackRating(0);
+      setFeedbackComment("");
+    }
   };
 
   const handleCallbackSubmit = (e: React.FormEvent) => {
@@ -78,11 +96,15 @@ export const CustomerView = () => {
   };
 
   const chatMessages = customerActiveTicketId
-    ? db.messages.filter((m: any) => m.ticketId === customerActiveTicketId)
+    ? db.messages.filter(
+        (m: any) =>
+          m.ticketId === customerActiveTicketId && m.senderType !== "internal",
+      )
     : [];
   const currentTicket = customerActiveTicketId
     ? db.tickets.find((t: any) => t.id === customerActiveTicketId)
     : null;
+  const isTicketResolved = currentTicket?.status === "Resolved";
 
   return (
     <div className="relative min-h-[calc(100vh-64px)] flex flex-col bg-[#050505] overflow-hidden">
@@ -176,7 +198,7 @@ export const CustomerView = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {customerActiveTicketId && (
+                {customerActiveTicketId && !isTicketResolved && (
                   <button
                     onClick={handleCustomerEndChat}
                     className="text-[10px] uppercase tracking-widest text-red-400 hover:text-white bg-red-500/10 hover:bg-red-500/40 px-3 py-2 rounded-xl font-bold transition-all border border-red-500/20"
@@ -185,7 +207,10 @@ export const CustomerView = () => {
                   </button>
                 )}
                 <button
-                  onClick={() => setIsChatOpen(false)}
+                  onClick={() => {
+                    setIsChatOpen(false);
+                    setCustomerActiveTicketId(null);
+                  }}
                   className="text-zinc-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2.5 rounded-xl"
                 >
                   <X className="w-5 h-5" />
@@ -261,28 +286,30 @@ export const CustomerView = () => {
                       )}
 
                       {/* AI Action Buttons */}
-                      {msg.actionRequired === "Escalate" && (
-                        <div className="mt-2 ml-2">
-                          <Button
-                            onClick={() =>
-                              handleSend(undefined, "Connect to human agent")
-                            }
-                            className="h-8 text-[10px] px-3 py-0 !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
-                          >
-                            Connect to Human Agent
-                          </Button>
-                        </div>
-                      )}
-                      {msg.actionRequired === "Callback" && (
-                        <div className="mt-2 ml-2">
-                          <Button
-                            onClick={() => setIsCallbackModalOpen(true)}
-                            className="h-8 text-[10px] px-3 py-0 !bg-purple-600 hover:!bg-purple-500 text-white shadow-none border-0"
-                          >
-                            Request Callback
-                          </Button>
-                        </div>
-                      )}
+                      {msg.actionRequired === "Escalate" &&
+                        !isTicketResolved && (
+                          <div className="mt-2 ml-2">
+                            <Button
+                              onClick={() =>
+                                handleSend(undefined, "Connect to human agent")
+                              }
+                              className="h-8 text-[10px] px-3 py-0 !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
+                            >
+                              Connect to Human Agent
+                            </Button>
+                          </div>
+                        )}
+                      {msg.actionRequired === "Callback" &&
+                        !isTicketResolved && (
+                          <div className="mt-2 ml-2">
+                            <Button
+                              onClick={() => setIsCallbackModalOpen(true)}
+                              className="h-8 text-[10px] px-3 py-0 !bg-purple-600 hover:!bg-purple-500 text-white shadow-none border-0"
+                            >
+                              Request Callback
+                            </Button>
+                          </div>
+                        )}
 
                       {msg.senderType !== "system" && (
                         <span className="text-[10px] text-zinc-500 mt-2 mx-2 font-bold tracking-widest uppercase">
@@ -299,7 +326,7 @@ export const CustomerView = () => {
                       )}
                     </motion.div>
                   ))}
-                  {isTyping && (
+                  {isTyping && !isTicketResolved && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -332,6 +359,55 @@ export const CustomerView = () => {
                       </div>
                     </motion.div>
                   )}
+                  {isTicketResolved && !currentTicket.feedback && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-black/80 border border-white/10 p-5 rounded-2xl text-center mt-4 shadow-xl"
+                    >
+                      <h4 className="text-white font-bold mb-2">
+                        How was your experience?
+                      </h4>
+                      <p className="text-xs text-zinc-400 mb-4">
+                        Your feedback helps us improve.
+                      </p>
+                      <div className="flex justify-center gap-2 mb-4">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            onMouseEnter={() => setFeedbackHover(star)}
+                            onMouseLeave={() => setFeedbackHover(0)}
+                            onClick={() => setFeedbackRating(star)}
+                            className="p-1 focus:outline-none"
+                          >
+                            <Star
+                              className={`w-8 h-8 ${star <= (feedbackHover || feedbackRating) ? "text-[#FFD100] fill-[#FFD100]" : "text-zinc-600"} transition-all`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      {feedbackRating > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="space-y-3"
+                        >
+                          <textarea
+                            value={feedbackComment}
+                            onChange={(e) => setFeedbackComment(e.target.value)}
+                            placeholder="Add a comment (optional)..."
+                            className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#FFD100] h-20 resize-none"
+                          ></textarea>
+                          <Button
+                            onClick={handleFeedbackSubmit}
+                            className="w-full"
+                          >
+                            Submit Feedback
+                          </Button>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  )}
                 </>
               )}
               <div ref={messagesEndRef} />
@@ -360,9 +436,9 @@ export const CustomerView = () => {
                       type="text"
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
-                      disabled={currentTicket?.status === "Resolved"}
+                      disabled={isTicketResolved}
                       placeholder={
-                        currentTicket?.status === "Resolved"
+                        isTicketResolved
                           ? "Chat ended."
                           : "Type your message..."
                       }
@@ -372,9 +448,7 @@ export const CustomerView = () => {
                   </div>
                   <button
                     type="submit"
-                    disabled={
-                      !inputText.trim() || currentTicket?.status === "Resolved"
-                    }
+                    disabled={!inputText.trim() || isTicketResolved}
                     className="w-14 h-14 bg-[#FFD100] hover:bg-yellow-400 disabled:bg-white/5 disabled:text-zinc-600 text-black rounded-2xl flex items-center justify-center transition-all active:scale-95"
                   >
                     <Send className="w-6 h-6 ml-1" />

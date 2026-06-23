@@ -12,6 +12,7 @@ import {
   Paperclip,
   FileText,
   Tag,
+  PhoneCall,
 } from "lucide-react";
 import { useGlobalContext } from "../../hooks/useGlobalContext";
 import { Button } from "../../components/ui/Button";
@@ -58,15 +59,16 @@ export const TicketDetailWorkspace = ({
   }, [messages]);
   if (!ticket) return null;
 
-  const handleReply = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!replyText.trim()) return;
+  const handleReply = (e?: React.FormEvent, predefinedText?: string) => {
+    e?.preventDefault();
+    const textToSend = predefinedText || replyText;
+    if (!textToSend.trim()) return;
     if (!ticket.assignedTo && !asAdmin) assignTicket(ticket.id, activeUserId);
 
-    if (isInternalNote) {
-      sendMessage(ticket.id, activeUserId, "internal", replyText);
+    if (isInternalNote && !predefinedText) {
+      sendMessage(ticket.id, activeUserId, "internal", textToSend);
     } else {
-      sendMessage(ticket.id, activeUserId, "agent", replyText);
+      sendMessage(ticket.id, activeUserId, "agent", textToSend);
     }
     setReplyText("");
   };
@@ -74,6 +76,15 @@ export const TicketDetailWorkspace = ({
   const handleAgentEndChat = () => {
     endChatAgent(ticket.id, activeUserName);
     onBack();
+  };
+
+  const handleCallCustomer = () => {
+    sendMessage(
+      ticket.id,
+      activeUserId,
+      "system",
+      `Agent ${activeUserName} initiated an outbound call to customer.`,
+    );
   };
 
   const getPriorityColor = (p: string) => {
@@ -88,6 +99,18 @@ export const TicketDetailWorkspace = ({
       return <AlertCircle className="w-4 h-4 text-red-500" />;
     if (type === "Bug") return <Bug className="w-4 h-4 text-red-500" />;
     return <HelpCircle className="w-4 h-4 text-blue-400" />;
+  };
+
+  const getSenderName = (msg: any) => {
+    if (msg.senderType === "customer") return customer.name;
+    if (msg.senderType === "ai") return "System Bot";
+    if (msg.senderType === "agent" || msg.senderType === "internal") {
+      const agent = db.agents.find((a: any) => a.id === msg.senderId);
+      const admin = db.adminUsers.find((a: any) => a.id === msg.senderId);
+      const emp = db.employees.find((e: any) => e.id === msg.senderId);
+      return agent?.name || admin?.name || emp?.name || "Agent";
+    }
+    return "System";
   };
 
   return (
@@ -124,7 +147,7 @@ export const TicketDetailWorkspace = ({
                 >
                   Assign to Me
                 </Button>
-              ) : ticket.status !== "resolved" && !asAdmin ? (
+              ) : ticket.status !== "Resolved" && !asAdmin ? (
                 <Button
                   variant="danger"
                   onClick={handleAgentEndChat}
@@ -132,7 +155,7 @@ export const TicketDetailWorkspace = ({
                 >
                   Resolve Issue
                 </Button>
-              ) : ticket.status === "resolved" ? (
+              ) : ticket.status === "Resolved" ? (
                 <span className="px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/20 rounded-xl text-xs font-bold uppercase tracking-widest">
                   Resolved
                 </span>
@@ -141,7 +164,7 @@ export const TicketDetailWorkspace = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col">
           <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-2">
             <Activity className="w-4 h-4 text-zinc-500" />
             <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
@@ -150,7 +173,7 @@ export const TicketDetailWorkspace = ({
           </div>
 
           {ticket.aiInsights && (
-            <div className="bg-[#FFD100]/5 border border-[#FFD100]/20 rounded-xl p-4 mb-6 shadow-inner">
+            <div className="bg-[#FFD100]/5 border border-[#FFD100]/20 rounded-xl p-4 mb-6 shadow-inner shrink-0">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-[#FFD100]" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-[#FFD100]">
@@ -178,7 +201,7 @@ export const TicketDetailWorkspace = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               key={msg.id}
-              className={`flex flex-col ${msg.senderType === "agent" || msg.senderType === "internal" ? "items-end" : "items-start"}`}
+              className={`flex flex-col shrink-0 ${msg.senderType === "agent" || msg.senderType === "internal" ? "items-end" : "items-start"}`}
             >
               {msg.senderType === "system" ? (
                 <div className="w-full flex justify-center my-2">
@@ -207,12 +230,7 @@ export const TicketDetailWorkspace = ({
                       className={`flex items-baseline gap-2 mb-1 ${msg.senderType === "agent" || msg.senderType === "internal" ? "justify-end" : ""}`}
                     >
                       <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                        {msg.senderType === "agent" ||
-                        msg.senderType === "internal"
-                          ? activeUserName
-                          : msg.senderType === "ai"
-                            ? "System Bot"
-                            : customer.name}
+                        {getSenderName(msg)}
                       </span>
                       <span className="text-[9px] font-mono text-zinc-600">
                         {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -237,10 +255,10 @@ export const TicketDetailWorkspace = ({
               )}
             </motion.div>
           ))}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="shrink-0" />
         </div>
 
-        {ticket.status !== "resolved" && !asAdmin && (
+        {ticket.status !== "Resolved" && !asAdmin && (
           <div className="p-4 bg-[#0A0A0A] border-t border-white/5 shrink-0">
             <div className="flex gap-4 mb-2">
               <button
@@ -256,6 +274,26 @@ export const TicketDetailWorkspace = ({
                 Internal Note
               </button>
             </div>
+
+            {!isInternalNote && (
+              <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide">
+                {[
+                  "I am looking into this right now.",
+                  "Could you share a screenshot of the issue?",
+                  "I've initiated a refund for you.",
+                  "Is there anything else I can help with?",
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => handleReply(undefined, preset)}
+                    className="text-[10px] whitespace-nowrap bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 px-3 py-1.5 rounded-full transition-colors"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <form
               onSubmit={handleReply}
               className="relative flex flex-col gap-2"
@@ -302,7 +340,8 @@ export const TicketDetailWorkspace = ({
         )}
       </div>
 
-      <div className="hidden md:flex flex-col w-80 bg-[#0A0A0A] overflow-y-auto border-l border-white/5">
+      {/* Right Column: Details Panel */}
+      <div className="hidden md:flex flex-col w-80 bg-[#0A0A0A] overflow-y-auto border-l border-white/5 shrink-0">
         <div className="h-14 px-5 border-b border-white/5 flex items-center bg-white/5 shrink-0">
           <h3 className="text-xs font-black text-white uppercase tracking-widest">
             Details
@@ -352,18 +391,31 @@ export const TicketDetailWorkspace = ({
               ) : (
                 <div className="flex items-center gap-2 bg-black/40 p-2 rounded-lg border border-white/5">
                   <div className="w-6 h-6 bg-[#FFD100]/20 text-[#FFD100] rounded-md flex items-center justify-center text-xs font-bold">
-                    {ticket.assignedTo ? ticket.assignedTo.charAt(4) : "?"}
+                    {ticket.assignedTo
+                      ? db.agents
+                          .find((a: any) => a.id === ticket.assignedTo)
+                          ?.name.charAt(0)
+                      : "?"}
                   </div>
                   <span className="text-sm font-semibold text-white">
-                    {ticket.assignedTo || "Unassigned"}
+                    {db.agents.find((a: any) => a.id === ticket.assignedTo)
+                      ?.name || "Unassigned"}
                   </span>
                 </div>
               )}
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex justify-between items-center">
                 Reporter
+                {!asAdmin && (
+                  <button
+                    onClick={handleCallCustomer}
+                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                  >
+                    <PhoneCall className="w-3 h-3" /> Call
+                  </button>
+                )}
               </span>
               <div className="flex items-center gap-2 bg-black/40 p-2 rounded-lg border border-white/5">
                 <div className="w-6 h-6 bg-white/10 text-white rounded-md flex items-center justify-center text-xs font-bold">
@@ -405,6 +457,22 @@ export const TicketDetailWorkspace = ({
               </div>
             </div>
 
+            {ticket.feedback && (
+              <div className="flex flex-col gap-1 mt-4">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                  Customer Feedback
+                </span>
+                <div className="bg-white/5 border border-white/10 p-3 rounded-lg">
+                  <span className="text-lg font-bold text-[#FFD100] block mb-1">
+                    {ticket.feedback.rating} ★
+                  </span>
+                  <p className="text-xs text-zinc-300 italic">
+                    "{ticket.feedback.comment || "No comment provided"}"
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="h-px bg-white/5 my-4"></div>
 
             <div className="flex flex-col gap-1">
@@ -428,6 +496,7 @@ export const TicketDetailWorkspace = ({
         </div>
       </div>
 
+      {/* Jira Modals (Edit / Link) */}
       <AnimatePresence>
         {isEditModalOpen && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -462,14 +531,19 @@ export const TicketDetailWorkspace = ({
                   <label className="text-xs font-bold text-zinc-500 block mb-2">
                     Category
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={editData.category}
                     onChange={(e) =>
                       setEditData({ ...editData, category: e.target.value })
                     }
                     className={`w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none ${asAdmin ? "focus:border-purple-500" : "focus:border-[#FFD100]"}`}
-                  />
+                  >
+                    <option value="Payment / Billing">Payment / Billing</option>
+                    <option value="Safety Incident">Safety Incident</option>
+                    <option value="Driver Behavior">Driver Behavior</option>
+                    <option value="Lost Item">Lost Item</option>
+                    <option value="General Support">General Support</option>
+                  </select>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
