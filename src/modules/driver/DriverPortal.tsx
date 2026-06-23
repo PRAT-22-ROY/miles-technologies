@@ -15,8 +15,8 @@ import { Floating3DBackground } from "../../components/layout/Floating3DBackgrou
 import { THEME } from "../../constants";
 import { Button } from "../../components/ui/Button";
 
-export const DriverLogin = () => {
-  const { db, submitDriverApplication, setActiveMode } = useGlobalContext();
+export const DriverPortal = () => {
+  const { db, submitDriverApplication } = useGlobalContext();
   const [view, setView] = useState<"portal" | "apply" | "track" | "success">(
     "portal",
   );
