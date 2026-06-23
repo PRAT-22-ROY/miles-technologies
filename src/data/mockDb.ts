@@ -1,4 +1,4 @@
-import { GlobalDatabase, Agent, AdminUser } from "../types";
+import { GlobalDatabase, Agent, AdminUser, Employee } from "../types";
 
 export const agentsList: Agent[] = [
   {
@@ -36,6 +36,71 @@ export const adminUsersList: AdminUser[] = [
     name: "Neha",
     role: "Head of HR & Operations",
     tags: ["HR", "Admin"],
+  },
+];
+
+const mockPermissions = {
+  dashboard: ["View Dashboard", "Edit Dashboard"],
+  hr: ["Employee Onboarding", "Attendance", "Compliance"],
+  operations: ["Driver Onboarding", "Driver Approval", "Driver Management"],
+  support: ["Tickets", "Customer Support", "Escalations"],
+  admin: ["User Management", "Team Management", "Settings"],
+};
+
+export const employeesList: Employee[] = [
+  {
+    id: "EMP-001",
+    name: "Kabir",
+    email: "kabir@miles.com",
+    employeeId: "M-1001",
+    role: "Operations Intern",
+    department: "Driver Onboarding",
+    leaveBalance: 5,
+    workType: "Office",
+    status: "offline",
+    employmentType: "Intern",
+    accountStatus: "Active",
+    permissions: {
+      dashboard: ["View Dashboard"],
+      hr: [],
+      operations: ["Driver Onboarding"],
+      support: [],
+      admin: [],
+    },
+  },
+  {
+    id: "EMP-002",
+    name: "Rahul",
+    email: "rahul.ops@miles.com",
+    employeeId: "M-1002",
+    role: "Operations Executive",
+    department: "Operations",
+    leaveBalance: 12,
+    workType: "Remote",
+    status: "offline",
+    employmentType: "Full Time",
+    accountStatus: "Active",
+    permissions: {
+      dashboard: ["View Dashboard"],
+      hr: [],
+      operations: ["Driver Onboarding", "Driver Approval", "Driver Management"],
+      support: [],
+      admin: [],
+    },
+  },
+  {
+    id: "EMP-003",
+    name: "Pratik",
+    email: "pratik@miles.com",
+    employeeId: "M-1003",
+    role: "Full Stack Dev & Eng Manager",
+    department: "Engineering",
+    leaveBalance: 20,
+    workType: "Hybrid",
+    status: "offline",
+    employmentType: "Full Time",
+    accountStatus: "Active",
+    permissions: mockPermissions,
   },
 ];
 
@@ -79,33 +144,44 @@ export const initialDb: GlobalDatabase = {
   },
   adminUsers: adminUsersList,
   agents: agentsList,
-  employees: [
-    {
-      id: "EMP-001",
-      name: "Kabir",
-      role: "Operations Intern",
-      department: "Driver Onboarding",
-      leaveBalance: 5,
-      workType: "Office",
-      status: "offline",
-    },
-  ],
+  employees: employeesList,
   driverApplications: [
     {
       id: "DRV-REQ-01",
       name: "Suresh Kumar",
       phone: "+91 99999 11111",
       vehicle: "Maruti Dzire",
-      status: "pending_manager",
+      status: "pending_hr",
       submittedAt: new Date(Date.now() - 86400000).toISOString(),
+      documentsStatus: "Pending",
+      vehicleVerification: "Pending",
+      insuranceVerification: "Pending",
+      trainingStatus: "Pending",
     },
     {
       id: "DRV-REQ-02",
       name: "Rajesh Verma",
       phone: "+91 99887 77665",
       vehicle: "Tata Tigor",
-      status: "pending_hr",
+      status: "applied",
       submittedAt: new Date(Date.now() - 10000000).toISOString(),
+      documentsStatus: "Pending",
+      vehicleVerification: "Pending",
+      insuranceVerification: "Pending",
+      trainingStatus: "Pending",
+    },
+    {
+      id: "DRV-REQ-03",
+      name: "Amit Singh",
+      phone: "+91 88888 22222",
+      vehicle: "Hyundai Aura",
+      status: "assigned_ops",
+      assignedOpsExecutive: "EMP-002",
+      submittedAt: new Date(Date.now() - 172800000).toISOString(),
+      documentsStatus: "Verified",
+      vehicleVerification: "Pending",
+      insuranceVerification: "Pending",
+      trainingStatus: "Pending",
     },
   ],
   onboardingRequests: [

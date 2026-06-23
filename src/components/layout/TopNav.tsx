@@ -34,8 +34,8 @@ export const TopNav = () => {
         </span>
       </div>
 
-      <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 relative overflow-x-auto max-w-[50%] sm:max-w-none">
-        {["customer", "agent", "employee", "admin"].map((mode) => (
+      <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 relative overflow-x-auto max-w-[60%] sm:max-w-none">
+        {["customer", "agent", "employee", "admin", "driver"].map((mode) => (
           <button
             key={mode}
             onClick={() => setActiveMode(mode)}
@@ -61,10 +61,13 @@ export const TopNav = () => {
       <div className="flex items-center gap-3">
         {(activeMode === "agent" && currentAgent) ||
         (activeMode === "employee" && currentEmployee) ||
-        (activeMode === "admin" && isAdminLogged) ? (
+        (activeMode === "admin" && isAdminLogged) ||
+        (activeMode === "driver" && currentEmployee) ? (
           <>
             {shiftStatus !== "offline" &&
-              (activeMode === "agent" || activeMode === "employee") && (
+              (activeMode === "agent" ||
+                activeMode === "employee" ||
+                activeMode === "driver") && (
                 <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
                   <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse"></span>
                   <span className="hidden sm:block text-[11px] font-bold text-white uppercase tracking-widest">
@@ -79,7 +82,8 @@ export const TopNav = () => {
               onClick={() => {
                 endShift(currentAgent, currentEmployee);
                 if (activeMode === "agent") setCurrentAgent(null);
-                if (activeMode === "employee") setCurrentEmployee(null);
+                if (activeMode === "employee" || activeMode === "driver")
+                  setCurrentEmployee(null);
                 if (activeMode === "admin") {
                   setIsAdminLogged(false);
                   setCurrentAdmin(null);

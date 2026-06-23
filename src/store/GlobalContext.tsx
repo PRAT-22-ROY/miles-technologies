@@ -1,7 +1,13 @@
 import React, { useState, useEffect, createContext } from "react";
 import { initialDb } from "../data/mockDb";
 import { generateId, generateTicketKey } from "../utils/helpers";
-import { GlobalDatabase, Agent, Employee, AdminUser } from "../types";
+import {
+  GlobalDatabase,
+  Agent,
+  Employee,
+  AdminUser,
+  Permissions,
+} from "../types";
 
 export const GlobalContext = createContext<any>(null);
 
@@ -432,7 +438,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         ...prev,
         driverApplications: [req, ...prev.driverApplications],
       }));
-    if (type === "Intern")
+    if (type === "Intern" || type === "Full Time")
       setDb((prev) => ({
         ...prev,
         onboardingRequests: [req, ...prev.onboardingRequests],
@@ -453,7 +459,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       let newState = { ...prev };
       if (type === "Driver")
         newState.driverApplications = updater(prev.driverApplications);
-      if (type === "Intern") {
+      if (type === "Intern" || type === "Full Time") {
         newState.onboardingRequests = updater(prev.onboardingRequests);
         if (nextStatus === "approved") {
           const req = prev.onboardingRequests.find((r) => r.id === id)!;
@@ -464,9 +470,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
               name: req.name,
               role: req.role,
               department: req.department,
-              leaveBalance: 5,
+              leaveBalance: type === "Full Time" ? 20 : 5,
               workType: "Office",
               status: "offline",
+              employmentType: type as any,
+              accountStatus: "Active",
             },
           ];
         }
@@ -486,7 +494,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       let newState = { ...prev };
       if (type === "Driver")
         newState.driverApplications = updater(prev.driverApplications);
-      if (type === "Intern")
+      if (type === "Intern" || type === "Full Time")
         newState.onboardingRequests = updater(prev.onboardingRequests);
       if (type === "Contractor")
         newState.contractors = updater(prev.contractors);
@@ -494,11 +502,45 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  const updateDriverApp = (id: string, status: string) => {
+  const updateDriverApp = (id: string, updates: any) => {
     setDb((prev) => ({
       ...prev,
       driverApplications: prev.driverApplications.map((d) =>
-        d.id === id ? { ...d, status } : d,
+        d.id === id ? { ...d, ...updates } : d,
+      ),
+    }));
+  };
+
+  const addTeamMember = (data: Partial<Employee>) => {
+    const newEmp: Employee = {
+      id: generateId("EMP"),
+      name: data.name || "",
+      email: data.email,
+      phone: data.phone,
+      employeeId: data.employeeId,
+      role: data.role || "Employee",
+      department: data.department || "General",
+      leaveBalance: data.employmentType === "Intern" ? 5 : 20,
+      workType: "Office",
+      status: "offline",
+      employmentType: data.employmentType || "Full Time",
+      accountStatus: data.accountStatus || "Active",
+      permissions: data.permissions || {
+        dashboard: [],
+        hr: [],
+        operations: [],
+        support: [],
+        admin: [],
+      },
+    };
+    setDb((prev) => ({ ...prev, employees: [...prev.employees, newEmp] }));
+  };
+
+  const updateTeamMember = (id: string, data: Partial<Employee>) => {
+    setDb((prev) => ({
+      ...prev,
+      employees: prev.employees.map((e) =>
+        e.id === id ? { ...e, ...data } : e,
       ),
     }));
   };
@@ -544,6 +586,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         advanceApproval,
         rejectApproval,
         updateDriverApp,
+        addTeamMember,
+        updateTeamMember,
       }}
     >
       {children}
