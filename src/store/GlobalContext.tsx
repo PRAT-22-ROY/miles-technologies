@@ -6,7 +6,9 @@ import {
   Agent,
   Employee,
   AdminUser,
-  Permissions,
+  DriverApplication,
+  Ticket,
+  ActiveDriver,
 } from "../types";
 
 export const GlobalContext = createContext<any>(null);
@@ -15,7 +17,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [db, setDb] = useState<GlobalDatabase>(initialDb);
-  const [activeMode, setActiveMode] = useState("customer"); // customer, agent, employee, admin
+  const [activeMode, setActiveMode] = useState("customer"); // customer, agent, employee, admin, driver
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null);
@@ -279,7 +281,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   const sendMessage = (
     ticketId: string,
     senderId: string,
-    senderType: "customer" | "agent" | "ai" | "system" | "internal",
+    senderType:
+      | "customer"
+      | "agent"
+      | "ai"
+      | "system"
+      | "internal"
+      | "applicant",
     text: string,
   ) => {
     const newMessage = {
@@ -433,11 +441,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       status: "pending_manager",
       submittedAt: new Date().toISOString(),
     };
-    if (type === "Driver")
-      setDb((prev) => ({
-        ...prev,
-        driverApplications: [req, ...prev.driverApplications],
-      }));
     if (type === "Intern" || type === "Full Time")
       setDb((prev) => ({
         ...prev,
@@ -457,8 +460,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setDb((prev) => {
       let newState = { ...prev };
-      if (type === "Driver")
-        newState.driverApplications = updater(prev.driverApplications);
       if (type === "Intern" || type === "Full Time") {
         newState.onboardingRequests = updater(prev.onboardingRequests);
         if (nextStatus === "approved") {
@@ -492,8 +493,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       );
     setDb((prev) => {
       let newState = { ...prev };
-      if (type === "Driver")
-        newState.driverApplications = updater(prev.driverApplications);
       if (type === "Intern" || type === "Full Time")
         newState.onboardingRequests = updater(prev.onboardingRequests);
       if (type === "Contractor")
@@ -503,12 +502,87 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateDriverApp = (id: string, updates: any) => {
+    setDb((prev) => {
+      const updatedApps = prev.driverApplications.map((d) =>
+        d.id === id ? { ...d, ...updates } : d,
+      );
+
+      // If approved, add to active drivers
+      let newActiveDrivers = prev.activeDrivers;
+      if (updates.status === "Approved") {
+        const drv = updatedApps.find((d) => d.id === id);
+        if (drv && !newActiveDrivers.find((a) => a.applicationId === drv.id)) {
+          newActiveDrivers = [
+            ...newActiveDrivers,
+            {
+              id: generateId("D"),
+              applicationId: drv.id,
+              name: drv.name,
+              phone: drv.phone,
+              vehicleType: drv.vehicleCategory,
+              vehicleModel: drv.vehicleModel,
+              vehicleNumber: drv.vehicleNumber,
+              joiningDate: new Date().toISOString().split("T")[0],
+              status: "Active",
+            },
+          ];
+        }
+      }
+
+      return {
+        ...prev,
+        driverApplications: updatedApps,
+        activeDrivers: newActiveDrivers,
+      };
+    });
+
+    if (updates.status) {
+      addSystemAction(id, `Status updated to ${updates.status}`);
+    }
+  };
+
+  const submitDriverApplication = (data: Partial<DriverApplication>) => {
+    // Create random ID based on mobile hash hash
+    const mobileHash =
+      data.phone?.substring(data.phone.length - 5) ||
+      Math.floor(10000 + Math.random() * 90000).toString();
+    const appId = `DRV-2026-${mobileHash}`;
+
+    const newApp: DriverApplication = {
+      ...(data as any),
+      id: appId,
+      status: "Submitted",
+      submittedAt: new Date().toISOString(),
+    };
+
+    const newTicket: Ticket = {
+      id: appId,
+      applicationId: appId,
+      issueType: "Driver Onboarding",
+      category: "Operations",
+      priority: "P2 - High",
+      subject: `Driver Application - ${data.name}`,
+      status: "Submitted",
+      createdAt: new Date().toISOString(),
+      assignedTo: null,
+      isCallRequested: false,
+    };
+
     setDb((prev) => ({
       ...prev,
-      driverApplications: prev.driverApplications.map((d) =>
-        d.id === id ? { ...d, ...updates } : d,
-      ),
+      driverApplications: [newApp, ...prev.driverApplications],
+      tickets: [newTicket, ...prev.tickets],
     }));
+
+    addSystemAction(appId, `Application Submitted.`);
+    addSystemAction(appId, `Moved to HR Review queue.`);
+
+    // Auto update status to HR Review
+    setTimeout(() => {
+      updateDriverApp(appId, { status: "HR Review" });
+    }, 1000);
+
+    return appId;
   };
 
   const addTeamMember = (data: Partial<Employee>) => {
@@ -586,6 +660,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         advanceApproval,
         rejectApproval,
         updateDriverApp,
+        submitDriverApplication,
         addTeamMember,
         updateTeamMember,
       }}

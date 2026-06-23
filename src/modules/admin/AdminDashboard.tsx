@@ -14,7 +14,6 @@ import {
   HelpCircle,
   Shield,
   Edit,
-  Settings,
   Trash,
   Check,
   X,
@@ -38,11 +37,11 @@ export const AdminDashboard = () => {
     addTeamMember,
     updateTeamMember,
     updateDriverApp,
+    addSystemAction,
   } = useGlobalContext();
   const [activeTab, setActiveTab] = useState("global");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
-  const [showDriverForm, setShowDriverForm] = useState(false);
   const [showInternForm, setShowInternForm] = useState(false);
   const [showContractorForm, setShowContractorForm] = useState(false);
   const [showFullTimeForm, setShowFullTimeForm] = useState(false);
@@ -52,7 +51,8 @@ export const AdminDashboard = () => {
     useState<any>(null);
   const [selectedDriverForReview, setSelectedDriverForReview] =
     useState<any>(null);
-  const [selectedOpsExecutive, setSelectedOpsExecutive] = useState("");
+  const [selectedOpsTeam, setSelectedOpsTeam] = useState("Operations");
+  const [assignNotes, setAssignNotes] = useState("");
 
   const isHR = currentAdmin?.tags.includes("HR");
 
@@ -93,14 +93,18 @@ export const AdminDashboard = () => {
     setShowAddTeamMemberForm(false);
   };
 
-  const handleAssignToOps = () => {
-    if (selectedOpsExecutive && selectedDriverForReview) {
+  const handleAssignToTeam = () => {
+    if (selectedOpsTeam && selectedDriverForReview) {
       updateDriverApp(selectedDriverForReview.id, {
-        status: "assigned_ops",
-        assignedOpsExecutive: selectedOpsExecutive,
+        status: "Assigned",
+        assignedTeam: selectedOpsTeam,
       });
+      if (assignNotes) {
+        addSystemAction(selectedDriverForReview.id, `HR Note: ${assignNotes}`);
+      }
       setSelectedDriverForReview(null);
-      setSelectedOpsExecutive("");
+      setSelectedOpsTeam("Operations");
+      setAssignNotes("");
     }
   };
 
@@ -203,6 +207,16 @@ export const AdminDashboard = () => {
                         icon: FileWarning,
                       },
                       { id: "directory", label: "Team Directory", icon: Users },
+                      {
+                        id: "driver_apps",
+                        label: "Driver Applications",
+                        icon: Car,
+                      },
+                      {
+                        id: "driver_dir",
+                        label: "Driver Directory",
+                        icon: Users,
+                      },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -332,6 +346,175 @@ export const AdminDashboard = () => {
                   </tbody>
                 </table>
               </>
+            )}
+
+            {activeTab === "driver_apps" && isHR && (
+              <div className="flex flex-col h-full">
+                <div className="p-6 md:p-8 border-b border-white/5 bg-gradient-to-r from-blue-900/20 to-black shrink-0">
+                  <h2 className="text-2xl font-black text-white">
+                    Driver Applications Queue
+                  </h2>
+                </div>
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-[#0A0A0A] sticky top-0 z-10 shadow-md">
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        App ID
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Driver
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Vehicle
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5 text-right">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {db.driverApplications.filter(
+                      (d: any) =>
+                        d.status !== "Approved" &&
+                        d.status !== "Active" &&
+                        d.status !== "Rejected",
+                    ).length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="p-12 text-center text-zinc-600 font-bold uppercase tracking-widest"
+                        >
+                          No pending applications
+                        </td>
+                      </tr>
+                    ) : (
+                      db.driverApplications
+                        .filter(
+                          (d: any) =>
+                            d.status !== "Approved" &&
+                            d.status !== "Active" &&
+                            d.status !== "Rejected",
+                        )
+                        .map((drv: any) => (
+                          <tr key={drv.id} className="hover:bg-white/[0.02]">
+                            <td className="px-6 py-4 font-mono text-xs text-blue-400">
+                              {drv.id}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-white text-sm">
+                                {drv.name}
+                              </div>
+                              <div className="text-xs text-zinc-500">
+                                {drv.phone}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-xs text-zinc-300">
+                              {drv.vehicleCategory} - {drv.vehicleModel}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-zinc-300 px-2 py-1 rounded">
+                                {drv.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <Button
+                                onClick={() => {
+                                  setSelectedTicketId(drv.id);
+                                }}
+                                className="h-8 px-4 py-0 text-xs shadow-none bg-white/10 hover:bg-white/20 text-white"
+                              >
+                                View Application
+                              </Button>
+                              {drv.status === "HR Review" && (
+                                <Button
+                                  onClick={() =>
+                                    setSelectedDriverForReview(drv)
+                                  }
+                                  className="h-8 px-4 py-0 text-xs ml-2 shadow-none !bg-blue-600 hover:!bg-blue-500 text-white border-0"
+                                >
+                                  Assign to Team
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === "driver_dir" && isHR && (
+              <div className="flex flex-col h-full">
+                <div className="p-6 md:p-8 border-b border-white/5 bg-gradient-to-r from-green-900/20 to-black shrink-0">
+                  <h2 className="text-2xl font-black text-white">
+                    Active Driver Directory
+                  </h2>
+                </div>
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-[#0A0A0A] sticky top-0 z-10 shadow-md">
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Driver ID
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Name & Mobile
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Vehicle Details
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Joining Date
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {db.activeDrivers.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="p-12 text-center text-zinc-600 font-bold uppercase tracking-widest"
+                        >
+                          No active drivers
+                        </td>
+                      </tr>
+                    ) : (
+                      db.activeDrivers.map((drv: any) => (
+                        <tr key={drv.id} className="hover:bg-white/[0.02]">
+                          <td className="px-6 py-4 font-mono text-xs text-green-400">
+                            {drv.id}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-white text-sm">
+                              {drv.name}
+                            </div>
+                            <div className="text-xs text-zinc-500">
+                              {drv.phone}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-xs text-zinc-300">
+                            {drv.vehicleType} • {drv.vehicleNumber}
+                          </td>
+                          <td className="px-6 py-4 text-xs text-zinc-400">
+                            {new Date(drv.joiningDate).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-[10px] font-bold uppercase tracking-widest bg-green-500/10 text-green-400 px-2 py-1 rounded">
+                              {drv.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
 
             {activeTab === "team_management" && (
@@ -543,7 +726,10 @@ export const AdminDashboard = () => {
                   {[
                     {
                       label: "Drivers Pending",
-                      val: 128,
+                      val: db.driverApplications.filter(
+                        (d: any) =>
+                          d.status !== "Approved" && d.status !== "Active",
+                      ).length,
                       color: "text-blue-400",
                     },
                     {
@@ -588,12 +774,6 @@ export const AdminDashboard = () => {
                       Quick Actions
                     </h3>
                     <div className="space-y-3">
-                      <Button
-                        onClick={() => setShowDriverForm(true)}
-                        className="w-full justify-start !bg-white/5 hover:!bg-white/10 text-white border border-white/10 shadow-none"
-                      >
-                        <Car className="w-5 h-5 mr-3" /> Add Driver
-                      </Button>
                       <Button
                         onClick={() => setShowInternForm(true)}
                         className="w-full justify-start !bg-white/5 hover:!bg-white/10 text-white border border-white/10 shadow-none"
@@ -686,85 +866,6 @@ export const AdminDashboard = () => {
                                     ? "Approve & Add to Directory"
                                     : "Approve & Send to HR"}
                                 </Button>
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  </div>
-                  {/* DRIVER SECTION */}
-                  <div className="bg-[#121214] border border-blue-500/10 rounded-3xl p-6">
-                    <h3 className="text-white font-black uppercase tracking-widest mb-6 flex items-center gap-2">
-                      <Car className="w-5 h-5 text-blue-500" /> Driver
-                      Onboarding
-                    </h3>
-                    <div className="space-y-4">
-                      {db.driverApplications.filter((r: any) =>
-                        isHR
-                          ? r.status === "pending_hr"
-                          : r.status === "pending_manager",
-                      ).length === 0 ? (
-                        <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest text-center py-4">
-                          No pending approvals
-                        </p>
-                      ) : (
-                        db.driverApplications
-                          .filter((r: any) =>
-                            isHR
-                              ? r.status === "pending_hr"
-                              : r.status === "pending_manager",
-                          )
-                          .map((req: any) => (
-                            <div
-                              key={req.id}
-                              className="bg-black/50 p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-                            >
-                              <div>
-                                <p className="text-white font-bold text-lg">
-                                  {req.name}{" "}
-                                  <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded ml-2 uppercase">
-                                    Awaiting {isHR ? "HR" : "Manager"}
-                                  </span>
-                                </p>
-                                <p className="text-sm text-zinc-400 mt-1">
-                                  {req.vehicle} • {req.phone}
-                                </p>
-                              </div>
-                              <div className="flex gap-3 w-full md:w-auto">
-                                {isHR ? (
-                                  <Button
-                                    onClick={() =>
-                                      setSelectedDriverForReview(req)
-                                    }
-                                    className="flex-1 md:flex-none h-10 px-4 py-0 text-xs !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
-                                  >
-                                    Review & Assign to Ops
-                                  </Button>
-                                ) : (
-                                  <>
-                                    <Button
-                                      variant="danger"
-                                      onClick={() =>
-                                        rejectApproval("Driver", req.id)
-                                      }
-                                      className="flex-1 md:flex-none h-10 px-4 py-0 text-xs"
-                                    >
-                                      Reject
-                                    </Button>
-                                    <Button
-                                      onClick={() =>
-                                        advanceApproval(
-                                          "Driver",
-                                          req.id,
-                                          req.status,
-                                        )
-                                      }
-                                      className="flex-1 md:flex-none h-10 px-4 py-0 text-xs !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
-                                    >
-                                      Approve & Send to HR
-                                    </Button>
-                                  </>
-                                )}
                               </div>
                             </div>
                           ))
@@ -1013,42 +1114,6 @@ export const AdminDashboard = () => {
               />
             )}
 
-            {showDriverForm && (
-              <GenericFormModal
-                title="Driver Registration Form"
-                fields={[
-                  {
-                    name: "name",
-                    label: "Full Name",
-                    placeholder: "e.g. Ramesh Kumar",
-                  },
-                  {
-                    name: "phone",
-                    label: "Mobile Number",
-                    placeholder: "+91...",
-                  },
-                  {
-                    name: "vehicle",
-                    label: "Vehicle Category & Model",
-                    type: "select",
-                    options: [
-                      "AC Mini - Tata Tigor",
-                      "AC Sedan - Swift Dzire",
-                      "AC XL - Innova",
-                    ],
-                  },
-                  {
-                    name: "dl",
-                    label: "Driving License No.",
-                    placeholder: "DL-XXXX...",
-                  },
-                ]}
-                onSubmit={(data) => {
-                  createOnboarding("Driver", data);
-                }}
-                onClose={() => setShowDriverForm(false)}
-              />
-            )}
             {showInternForm && (
               <GenericFormModal
                 title="Intern Onboarding Form"
@@ -1123,7 +1188,7 @@ export const AdminDashboard = () => {
                   >
                     <div className="flex justify-between items-center mb-6">
                       <h3 className="text-white font-black text-lg">
-                        Assign Driver to Operations
+                        Assign Application to Team
                       </h3>
                       <button
                         onClick={() => setSelectedDriverForReview(null)}
@@ -1133,35 +1198,45 @@ export const AdminDashboard = () => {
                       </button>
                     </div>
                     <div className="bg-black/50 rounded-xl p-4 mb-4 border border-white/5">
+                      <p className="text-xs font-mono text-blue-400 mb-1">
+                        {selectedDriverForReview.id}
+                      </p>
                       <p className="text-white font-bold">
                         {selectedDriverForReview.name}
                       </p>
                       <p className="text-sm text-zinc-400">
-                        {selectedDriverForReview.vehicle} •{" "}
+                        {selectedDriverForReview.vehicleCategory} •{" "}
                         {selectedDriverForReview.phone}
                       </p>
                     </div>
                     <div className="space-y-4 mb-6">
                       <div>
                         <label className="text-xs font-bold text-zinc-500 block mb-2">
-                          Assign To Operations Executive
+                          Assign To Team
                         </label>
                         <select
-                          value={selectedOpsExecutive}
-                          onChange={(e) =>
-                            setSelectedOpsExecutive(e.target.value)
-                          }
+                          value={selectedOpsTeam}
+                          onChange={(e) => setSelectedOpsTeam(e.target.value)}
                           className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-blue-500"
                         >
-                          <option value="">Select Executive...</option>
-                          {db.employees
-                            .filter((e: any) => e.department === "Operations")
-                            .map((e: any) => (
-                              <option key={e.id} value={e.id}>
-                                {e.name} - {e.role}
-                              </option>
-                            ))}
+                          <option value="Operations">Operations Team</option>
+                          <option value="Verification">
+                            Verification Team
+                          </option>
+                          <option value="Training">Training Team</option>
+                          <option value="Support">Support Team</option>
                         </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 block mb-2">
+                          Internal Notes
+                        </label>
+                        <textarea
+                          value={assignNotes}
+                          onChange={(e) => setAssignNotes(e.target.value)}
+                          placeholder="Add a note for the assigned team..."
+                          className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-blue-500 h-20 resize-none"
+                        ></textarea>
                       </div>
                     </div>
                     <div className="flex gap-3">
@@ -1173,11 +1248,11 @@ export const AdminDashboard = () => {
                         Cancel
                       </Button>
                       <Button
-                        onClick={handleAssignToOps}
-                        disabled={!selectedOpsExecutive}
+                        onClick={handleAssignToTeam}
+                        disabled={!selectedOpsTeam}
                         className="flex-[2] h-10 !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
                       >
-                        Assign To Operations
+                        Assign & Update Status
                       </Button>
                     </div>
                   </motion.div>

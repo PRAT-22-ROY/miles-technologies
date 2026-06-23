@@ -27,7 +27,7 @@ export interface Customer {
 
 export interface Ticket {
   id: string;
-  customerId: string;
+  customerId?: string; // Optional for driver applications
   issueType: string;
   category: string;
   priority: string;
@@ -35,9 +35,11 @@ export interface Ticket {
   status: string;
   createdAt: string;
   assignedTo: string | null;
+  assignedTeam?: string; // Support, Verification, Operations, Training
   isCallRequested: boolean;
-  aiInsights: AIInsights | null;
-  environment: string;
+  aiInsights?: AIInsights | null;
+  environment?: string;
+  applicationId?: string; // Link to DriverApplication
 }
 
 export interface AIInsights {
@@ -51,7 +53,7 @@ export interface Message {
   id: string;
   ticketId: string;
   senderId: string;
-  senderType: "customer" | "agent" | "ai" | "system" | "internal";
+  senderType: "customer" | "agent" | "ai" | "system" | "internal" | "applicant";
   text: string;
   timestamp: string;
 }
@@ -83,30 +85,67 @@ export interface Employee {
 }
 
 export type DriverStatus =
-  | "applied"
-  | "documents_uploaded"
-  | "pending_manager"
-  | "pending_hr"
-  | "assigned_ops"
-  | "ops_review"
-  | "training"
-  | "approved"
-  | "rejected"
-  | "active"
-  | "inactive";
+  | "Submitted"
+  | "HR Review"
+  | "Assigned"
+  | "In Progress"
+  | "Waiting For Documents"
+  | "Verification"
+  | "Training"
+  | "Approved"
+  | "Rejected";
 
 export interface DriverApplication {
-  id: string;
+  id: string; // e.g. DRV-2026-45812
+
+  // Step 1
   name: string;
   phone: string;
-  vehicle: string;
+  email: string;
+  dob: string;
+  address: string;
+  emergencyContact: string;
+
+  // Step 2
+  dlNumber: string;
+  dlExpiry: string;
+  experience: number;
+  languages: string[];
+  dlFile?: any;
+
+  // Step 3
+  vehicleCategory: string;
+  vehicleNumber: string;
+  rcNumber: string;
+  vehicleModel: string;
+  manufacturingYear: string;
+  rcFile?: any;
+  insuranceFile?: any;
+  pucFile?: any;
+  fitnessFile?: any;
+
+  // Step 4
+  accountName: string;
+  accountNumber: string;
+  ifscCode: string;
+
+  // Workflow
   status: DriverStatus;
   submittedAt: string;
   assignedOpsExecutive?: string;
-  documentsStatus?: string;
-  vehicleVerification?: string;
-  insuranceVerification?: string;
-  trainingStatus?: string;
+  assignedTeam?: string;
+}
+
+export interface ActiveDriver {
+  id: string;
+  applicationId: string;
+  name: string;
+  phone: string;
+  vehicleType: string;
+  vehicleModel: string;
+  vehicleNumber: string;
+  joiningDate: string;
+  status: "Active" | "Suspended";
 }
 
 export interface OnboardingRequest {
@@ -174,6 +213,7 @@ export interface GlobalDatabase {
   agents: Agent[];
   employees: Employee[];
   driverApplications: DriverApplication[];
+  activeDrivers: ActiveDriver[];
   onboardingRequests: OnboardingRequest[];
   contractors: Contractor[];
   leaveRequests: LeaveRequest[];
