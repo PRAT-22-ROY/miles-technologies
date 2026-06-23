@@ -19,6 +19,9 @@ import {
   X,
   FileText,
   UserMinus,
+  CalendarRange,
+  PenTool,
+  Clock,
 } from "lucide-react";
 import { useGlobalContext } from "../../hooks/useGlobalContext";
 import { Button } from "../../components/ui/Button";
@@ -40,6 +43,8 @@ export const AdminDashboard = () => {
     updateDriverApp,
     addSystemAction,
     separateEmployee,
+    updateTimesheetStatus,
+    updateEmployeeProjectCode,
   } = useGlobalContext();
   const [activeTab, setActiveTab] = useState("global");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -78,6 +83,9 @@ export const AdminDashboard = () => {
       },
     };
     updateTeamMember(selectedEmployeeForEdit.id, formattedData);
+    if (data.projectCode) {
+      updateEmployeeProjectCode(selectedEmployeeForEdit.id, data.projectCode);
+    }
     setSelectedEmployeeForEdit(null);
   };
 
@@ -198,18 +206,13 @@ export const AdminDashboard = () => {
                     {[
                       {
                         id: "hr_dashboard",
-                        label: "Dashboard",
+                        label: "Organization & Metrics",
                         icon: LayoutDashboard,
                       },
                       {
                         id: "approvals",
                         label: "Approval Center",
                         icon: CheckCircle,
-                      },
-                      {
-                        id: "attendance_shifts",
-                        label: "Attendance & Shifts",
-                        icon: CalendarClock,
                       },
                       { id: "directory", label: "Team Directory", icon: Users },
                       {
@@ -343,7 +346,11 @@ export const AdminDashboard = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-xs font-semibold text-zinc-300">
-                            {ticket.assignedTo || "Unassigned"}
+                            {ticket.assignedTo
+                              ? db.agents.find(
+                                  (a: any) => a.id === ticket.assignedTo,
+                                )?.name
+                              : "Unassigned"}
                           </td>
                           <td className="px-6 py-4">
                             <span className="text-[10px] font-bold uppercase tracking-widest bg-white/5 text-zinc-300 px-2 py-1 rounded">
@@ -778,39 +785,36 @@ export const AdminDashboard = () => {
 
             {activeTab === "hr_dashboard" && isHR && (
               <div className="p-6 md:p-8 space-y-6">
-                <h2 className="text-2xl font-black text-white mb-6">
-                  HR Overview
+                <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-500" /> Organization &
+                  Metrics
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                   {[
                     {
-                      label: "Drivers Pending",
-                      val: db.driverApplications.filter(
-                        (d: any) =>
-                          d.status !== "Approved" && d.status !== "Active",
-                      ).length,
+                      label: "Total Org Members",
+                      val: db.employees.length,
                       color: "text-blue-400",
                     },
                     {
-                      label: "Interns Onboarding",
-                      val: 5,
-                      color: "text-purple-400",
-                    },
-                    {
-                      label: "Contractors Pending",
-                      val: 3,
+                      label: "Active Tickets",
+                      val: db.tickets.filter(
+                        (t: any) =>
+                          t.status !== "Resolved" && t.status !== "Closed",
+                      ).length,
                       color: "text-orange-400",
                     },
                     {
-                      label: "Attendance",
-                      val: "92%",
+                      label: "Closed This Week",
+                      val: db.tickets.filter(
+                        (t: any) => t.status === "Resolved",
+                      ).length,
                       color: "text-green-400",
                     },
-                    { label: "Clocked In", val: 27, color: "text-white" },
                     {
-                      label: "Compliance Alerts",
-                      val: 8,
-                      color: "text-red-500",
+                      label: "Avg Feedback (All)",
+                      val: "4.8 ★",
+                      color: "text-[#FFD100]",
                     },
                   ].map((c) => (
                     <div
@@ -828,8 +832,144 @@ export const AdminDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <div className="bg-[#121214] border border-white/5 p-6 rounded-3xl">
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">
+                  <div>
+                    <h3 className="text-white font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-500" /> Team Directory
+                      By Department
+                    </h3>
+                    {["Operations", "Engineering", "HR", "Support"].map(
+                      (dept) => {
+                        const emps = db.employees.filter(
+                          (e: any) =>
+                            e.department === dept &&
+                            e.accountStatus !== "Separated",
+                        );
+                        if (emps.length === 0) return null;
+                        return (
+                          <div key={dept} className="mb-4">
+                            <h4 className="text-xs font-bold text-zinc-400 mb-2">
+                              {dept}
+                            </h4>
+                            <table className="w-full text-left border-collapse bg-[#121214] rounded-2xl overflow-hidden border border-white/5">
+                              <thead className="bg-[#0A0A0A] border-b border-white/5">
+                                <tr>
+                                  <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                    Name
+                                  </th>
+                                  <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                    Role
+                                  </th>
+                                  <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                    Status
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {emps.map((emp: any) => (
+                                  <tr
+                                    key={emp.id}
+                                    className="cursor-pointer hover:bg-white/5 transition-colors"
+                                  >
+                                    <td className="px-4 py-3 font-bold text-white text-sm">
+                                      {emp.name}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-zinc-400">
+                                      {emp.role}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <span
+                                        className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded ${emp.status === "online" ? "bg-green-500/10 text-green-400" : "bg-zinc-500/10 text-zinc-400"}`}
+                                      >
+                                        {emp.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      },
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="text-white font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <CalendarRange className="w-4 h-4 text-blue-500" />{" "}
+                      Timesheet Approvals
+                    </h3>
+                    <table className="w-full text-left border-collapse bg-[#121214] rounded-2xl overflow-hidden border border-white/5">
+                      <thead className="bg-[#0A0A0A] border-b border-white/5">
+                        <tr>
+                          <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                            Employee
+                          </th>
+                          <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                            Project
+                          </th>
+                          <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                            Hours
+                          </th>
+                          <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {db.timesheets
+                          .filter(
+                            (t: any) =>
+                              t.status === "Submitted" ||
+                              t.status === "Edit Requested",
+                          )
+                          .map((ts: any) => (
+                            <tr
+                              key={ts.id}
+                              className="hover:bg-white/5 cursor-pointer"
+                            >
+                              <td className="px-4 py-3 font-bold text-white text-sm">
+                                {
+                                  db.employees.find(
+                                    (e: any) => e.id === ts.employeeId,
+                                  )?.name
+                                }
+                              </td>
+                              <td className="px-4 py-3 text-xs text-blue-400 font-mono">
+                                {ts.projectCode}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-white">
+                                {ts.totalHours}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <Button
+                                  onClick={() =>
+                                    updateTimesheetStatus(ts.id, "Approved")
+                                  }
+                                  className="h-6 text-[10px] px-2 py-0"
+                                >
+                                  Approve
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        {db.timesheets.filter(
+                          (t: any) =>
+                            t.status === "Submitted" ||
+                            t.status === "Edit Requested",
+                        ).length === 0 && (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="p-8 text-center text-zinc-500 text-xs uppercase tracking-widest font-bold"
+                            >
+                              No pending timesheets
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+
+                    <h3 className="text-white font-black uppercase tracking-widest mb-4 mt-8">
                       Quick Actions
                     </h3>
                     <div className="space-y-3">
@@ -956,6 +1096,11 @@ export const AdminDashboard = () => {
                     placeholder: "+91...",
                   },
                   {
+                    name: "employeeId",
+                    label: "Employee ID",
+                    placeholder: "M-1004",
+                  },
+                  {
                     name: "department",
                     label: "Department",
                     type: "select",
@@ -971,6 +1116,11 @@ export const AdminDashboard = () => {
                     label: "Employment Type",
                     type: "select",
                     options: ["Full Time", "Intern", "Contractor"],
+                  },
+                  {
+                    name: "projectCode",
+                    label: "Default Project Code",
+                    placeholder: "e.g. OPS-CORE",
                   },
                   {
                     name: "accountStatus",
@@ -1044,6 +1194,11 @@ export const AdminDashboard = () => {
                     options: ["Full Time", "Intern", "Contractor"],
                   },
                   {
+                    name: "projectCode",
+                    label: "Default Project Code",
+                    placeholder: selectedEmployeeForEdit.projectCode,
+                  },
+                  {
                     name: "perm_dashboard",
                     label: "Dashboard Access",
                     type: "checkbox-group",
@@ -1086,6 +1241,7 @@ export const AdminDashboard = () => {
                   role: selectedEmployeeForEdit.role,
                   department: selectedEmployeeForEdit.department,
                   employmentType: selectedEmployeeForEdit.employmentType,
+                  projectCode: selectedEmployeeForEdit.projectCode,
                   perm_dashboard:
                     selectedEmployeeForEdit.permissions?.dashboard || [],
                   perm_hr: selectedEmployeeForEdit.permissions?.hr || [],

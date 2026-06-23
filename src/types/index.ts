@@ -37,6 +37,12 @@ export type TicketStatus =
   | "ai_handling"
   | "offline_queued";
 
+export interface TicketFeedback {
+  rating: number;
+  comment?: string;
+  submittedAt: string;
+}
+
 export interface Ticket {
   id: string;
   customerId?: string; // Optional for driver applications
@@ -52,6 +58,8 @@ export interface Ticket {
   aiInsights?: AIInsights | null;
   environment?: string;
   applicationId?: string; // Link to DriverApplication
+  feedback?: TicketFeedback;
+  resolvedAt?: string;
 }
 
 export interface CallbackRequest {
@@ -111,6 +119,7 @@ export interface Employee {
   permissions?: Permissions;
   clockInTime?: string;
   clockOutTime?: string;
+  projectCode?: string;
 }
 
 export type DriverStatus =
@@ -202,11 +211,27 @@ export interface Contractor {
 export interface LeaveRequest {
   id: string;
   agentId?: string;
-  type: string;
+  type: string; // 'Leave' | 'WFH' | 'Half Day'
   date: string;
   reason: string;
   status: string;
   requestedAt: string;
+}
+
+export interface TimesheetEntry {
+  day: string; // e.g. 'Monday', 'Tuesday'
+  hours: number;
+}
+
+export interface Timesheet {
+  id: string;
+  employeeId: string;
+  weekStarting: string;
+  projectCode: string;
+  entries: TimesheetEntry[];
+  totalHours: number;
+  status: "Draft" | "Submitted" | "Edit Requested" | "Approved" | "Rejected";
+  submittedAt?: string;
 }
 
 export interface Task {
@@ -243,6 +268,7 @@ export interface GlobalDatabase {
   adminUsers: AdminUser[];
   agents: Agent[];
   employees: Employee[];
+  timesheets: Timesheet[];
   driverApplications: DriverApplication[];
   activeDrivers: ActiveDriver[];
   onboardingRequests: OnboardingRequest[];

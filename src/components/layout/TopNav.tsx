@@ -9,35 +9,13 @@ export const TopNav = () => {
     activeMode,
     setActiveMode,
     currentAgent,
-    setCurrentAgent,
     currentEmployee,
-    setCurrentEmployee,
-    currentAdmin,
-    setCurrentAdmin,
     isAdminLogged,
-    setIsAdminLogged,
     shiftStatus,
-    shiftDuration,
-    endShift,
+    shiftTick,
+    getShiftDuration,
+    logout,
   } = useGlobalContext();
-
-  const handleLogout = () => {
-      endShift(currentAgent, currentEmployee);
-
-      // Specifically handle logout logic for each user type without relying exclusively on activeMode
-      // This is because an Admin could be in the Employee tab or vice versa.
-      // We clear the state corresponding to the active mode to successfully "Log Out"
-      if (activeMode === "agent") {
-          setCurrentAgent(null);
-      } else if (activeMode === "employee") {
-          setCurrentEmployee(null);
-      } else if (activeMode === "admin") {
-          setIsAdminLogged(false);
-          setCurrentAdmin(null);
-      } else if (activeMode === "driver") {
-          setCurrentEmployee(null); // Because ops executives access driver portal
-      }
-  };
 
   return (
     <nav className="fixed top-0 left-0 w-full h-16 bg-[#050505]/80 backdrop-blur-2xl border-b border-white/10 z-[60] flex items-center px-4 md:px-8">
@@ -91,13 +69,17 @@ export const TopNav = () => {
               (activeMode === "agent" ||
                 activeMode === "employee" ||
                 activeMode === "driver") && (
-                <div className="hidden md:flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl h-10 w-28 justify-center shrink-0 overflow-hidden">
+                <div
+                  className="hidden md:flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl h-10 w-28 shrink-0 overflow-hidden"
+                  style={{ minWidth: "7rem" }}
+                >
                   <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse shrink-0"></span>
                   <span className="hidden lg:block text-[11px] font-bold text-white uppercase tracking-widest shrink-0">
-                    Online
+                    On
                   </span>
-                  <span className="text-xs font-mono text-zinc-400 ml-1 shrink-0 truncate">
-                    {formatDuration(shiftDuration)}
+                  <span className="text-xs font-mono text-zinc-400 ml-auto shrink-0 truncate">
+                    {/* Tick prop passed just to ensure re-render */}
+                    {formatDuration(getShiftDuration(shiftTick))}
                   </span>
                 </div>
               )}
@@ -111,11 +93,11 @@ export const TopNav = () => {
                 </div>
               )}
             <button
-              onClick={handleLogout}
+              onClick={logout}
               className="px-3 sm:px-4 h-10 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-500 text-red-500 hover:text-white rounded-xl transition-all flex items-center justify-center gap-2 group active:scale-95 w-10 md:w-28 shrink-0 overflow-hidden"
             >
               <LogOut className="w-4 h-4 group-hover:animate-pulse shrink-0" />
-              <span className="hidden md:block text-[10px] font-black uppercase tracking-widest shrink-0">
+              <span className="hidden md:block text-[10px] font-black uppercase tracking-widest shrink-0 truncate">
                 Log Out
               </span>
             </button>

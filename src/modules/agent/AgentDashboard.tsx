@@ -95,6 +95,7 @@ export const AgentDashboard = () => {
                   count: callbacks.length,
                 },
                 { id: "resolved", label: "Done", count: null },
+                { id: "profile", label: "My Profile", count: null },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -121,7 +122,40 @@ export const AgentDashboard = () => {
           </div>
 
           <div className="flex-1 overflow-auto bg-[#050505]">
-            {activeTab === "callbacks" ? (
+            {activeTab === "profile" ? (
+              <div className="p-8 max-w-lg mx-auto mt-10 text-center">
+                <div className="w-24 h-24 bg-[#FFD100]/10 border border-[#FFD100]/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <User className="w-12 h-12 text-[#FFD100]" />
+                </div>
+                <h2 className="text-3xl font-black text-white mb-2">
+                  {currentAgent?.name}
+                </h2>
+                <p className="text-zinc-400 font-bold uppercase tracking-widest text-sm mb-8">
+                  {currentAgent?.role}
+                </p>
+
+                <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 text-left space-y-4">
+                  <div>
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                      Agent ID
+                    </p>
+                    <p className="text-white font-mono">{currentAgent?.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                      Email Address
+                    </p>
+                    <p className="text-white">{currentAgent?.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                      Status
+                    </p>
+                    <p className="text-green-400 font-bold">Online / Active</p>
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === "callbacks" ? (
               <table className="w-full text-left border-collapse">
                 <thead className="bg-[#0A0A0A] sticky top-0 z-10 shadow-md">
                   <tr>

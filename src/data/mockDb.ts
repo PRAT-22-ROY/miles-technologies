@@ -4,6 +4,7 @@ import {
   AdminUser,
   Employee,
   CallbackRequest,
+  Timesheet,
 } from "../types";
 
 export const agentsList: Agent[] = [
@@ -66,6 +67,7 @@ export const employeesList: Employee[] = [
     status: "offline",
     employmentType: "Intern",
     accountStatus: "Active",
+    projectCode: "OPS-INT-01",
     permissions: {
       dashboard: ["View Dashboard"],
       hr: [],
@@ -86,6 +88,7 @@ export const employeesList: Employee[] = [
     status: "offline",
     employmentType: "Full Time",
     accountStatus: "Active",
+    projectCode: "OPS-CORE-02",
     permissions: {
       dashboard: ["View Dashboard"],
       hr: [],
@@ -106,6 +109,7 @@ export const employeesList: Employee[] = [
     status: "offline",
     employmentType: "Full Time",
     accountStatus: "Active",
+    projectCode: "ENG-MGT-01",
     permissions: mockPermissions,
   },
 ];
@@ -123,6 +127,27 @@ export const callbackRequestsList: CallbackRequest[] = [
     status: "Callback Requested",
     assignedTo: null,
     createdAt: new Date().toISOString(),
+  },
+];
+
+export const timesheetsList: Timesheet[] = [
+  {
+    id: "TS-1001",
+    employeeId: "EMP-001",
+    weekStarting: "2023-10-23",
+    projectCode: "OPS-INT-01",
+    entries: [
+      { day: "Monday", hours: 8 },
+      { day: "Tuesday", hours: 8 },
+      { day: "Wednesday", hours: 8 },
+      { day: "Thursday", hours: 8 },
+      { day: "Friday", hours: 8 },
+      { day: "Saturday", hours: 0 },
+      { day: "Sunday", hours: 0 },
+    ],
+    totalHours: 40,
+    status: "Submitted",
+    submittedAt: new Date().toISOString(),
   },
 ];
 
@@ -168,6 +193,7 @@ export const initialDb: GlobalDatabase = {
   adminUsers: adminUsersList,
   agents: agentsList,
   employees: employeesList,
+  timesheets: timesheetsList,
   driverApplications: [
     {
       id: "DRV-2026-00001",
