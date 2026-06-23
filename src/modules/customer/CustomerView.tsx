@@ -9,6 +9,7 @@ import {
   User,
   Paperclip,
   Send,
+  PhoneCall,
 } from "lucide-react";
 import { useGlobalContext } from "../../hooks/useGlobalContext";
 import { Button } from "../../components/ui/Button";
@@ -18,6 +19,7 @@ import { THEME } from "../../constants";
 
 export const CustomerView = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isCallbackModalOpen, setIsCallbackModalOpen] = useState(false);
   const {
     db,
     createTicket,
@@ -26,8 +28,14 @@ export const CustomerView = () => {
     setCustomerActiveTicketId,
     isTyping,
     endChatCustomer,
+    requestCallback,
   } = useGlobalContext();
   const [inputText, setInputText] = useState("");
+  const [callbackData, setCallbackData] = useState({
+    issueCategory: "",
+    preferredTime: "",
+    notes: "",
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,7 +53,7 @@ export const CustomerView = () => {
     let currentId = customerActiveTicketId;
     if (!currentId) {
       currentId = createTicket(
-        "Billing",
+        "General Support",
         "Medium",
         textToSend.substring(0, 30) + "...",
         textToSend,
@@ -60,6 +68,13 @@ export const CustomerView = () => {
   const handleCustomerEndChat = () => {
     if (customerActiveTicketId) endChatCustomer(customerActiveTicketId);
     setIsChatOpen(false);
+  };
+
+  const handleCallbackSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    requestCallback(callbackData);
+    setIsCallbackModalOpen(false);
+    setCallbackData({ issueCategory: "", preferredTime: "", notes: "" });
   };
 
   const chatMessages = customerActiveTicketId
@@ -113,13 +128,21 @@ export const CustomerView = () => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="flex w-full justify-center"
+          className="flex flex-col sm:flex-row w-full justify-center gap-4"
         >
           <Button
             onClick={() => setIsChatOpen(true)}
             className="w-full sm:w-auto px-10 py-5 text-lg rounded-[1.5rem]"
           >
             <MessageSquare className="w-6 h-6 mr-3" /> Get Help Now
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setIsCallbackModalOpen(true)}
+            className="w-full sm:w-auto px-10 py-5 text-lg rounded-[1.5rem]"
+          >
+            <PhoneCall className="w-6 h-6 mr-3 text-blue-400" /> Request
+            Callback
           </Button>
         </motion.div>
       </div>
@@ -131,7 +154,7 @@ export const CustomerView = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className={`fixed inset-0 md:inset-auto md:bottom-8 md:right-8 md:w-[440px] md:h-[720px] md:max-h-[85vh] flex flex-col ${THEME.panel} md:rounded-[2.5rem] z-50 overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]`}
+            className={`fixed inset-0 md:inset-auto md:bottom-8 md:right-8 w-full md:w-[440px] h-full md:h-[720px] md:max-h-[85vh] flex flex-col ${THEME.panel} md:rounded-[2.5rem] z-50 overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]`}
           >
             <div className="bg-white/[0.02] backdrop-blur-3xl p-5 border-b border-white/10 flex items-center justify-between shrink-0 z-10">
               <div className="flex items-center gap-3">
@@ -236,6 +259,31 @@ export const CustomerView = () => {
                           {msg.text}
                         </div>
                       )}
+
+                      {/* AI Action Buttons */}
+                      {msg.actionRequired === "Escalate" && (
+                        <div className="mt-2 ml-2">
+                          <Button
+                            onClick={() =>
+                              handleSend(undefined, "Connect to human agent")
+                            }
+                            className="h-8 text-[10px] px-3 py-0 !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
+                          >
+                            Connect to Human Agent
+                          </Button>
+                        </div>
+                      )}
+                      {msg.actionRequired === "Callback" && (
+                        <div className="mt-2 ml-2">
+                          <Button
+                            onClick={() => setIsCallbackModalOpen(true)}
+                            className="h-8 text-[10px] px-3 py-0 !bg-purple-600 hover:!bg-purple-500 text-white shadow-none border-0"
+                          >
+                            Request Callback
+                          </Button>
+                        </div>
+                      )}
+
                       {msg.senderType !== "system" && (
                         <span className="text-[10px] text-zinc-500 mt-2 mx-2 font-bold tracking-widest uppercase">
                           {msg.senderType === "agent"
@@ -293,11 +341,14 @@ export const CustomerView = () => {
               {currentTicket?.status === "offline_queued" ? (
                 <div className="text-center p-3 border border-red-500/20 bg-red-500/10 rounded-xl">
                   <p className="text-xs text-red-400 font-bold uppercase tracking-widest">
-                    Chat Disabled
+                    Chat Unavailable
                   </p>
-                  <p className="text-sm text-zinc-400 mt-1">
-                    Please email us at roypratik2000@gmail.com
-                  </p>
+                  <Button
+                    onClick={() => setIsCallbackModalOpen(true)}
+                    className="mt-2 h-8 text-[10px] px-3 py-0 !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
+                  >
+                    Request Callback Instead
+                  </Button>
                 </div>
               ) : (
                 <form
@@ -309,9 +360,9 @@ export const CustomerView = () => {
                       type="text"
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
-                      disabled={currentTicket?.status === "resolved"}
+                      disabled={currentTicket?.status === "Resolved"}
                       placeholder={
-                        currentTicket?.status === "resolved"
+                        currentTicket?.status === "Resolved"
                           ? "Chat ended."
                           : "Type your message..."
                       }
@@ -322,7 +373,7 @@ export const CustomerView = () => {
                   <button
                     type="submit"
                     disabled={
-                      !inputText.trim() || currentTicket?.status === "resolved"
+                      !inputText.trim() || currentTicket?.status === "Resolved"
                     }
                     className="w-14 h-14 bg-[#FFD100] hover:bg-yellow-400 disabled:bg-white/5 disabled:text-zinc-600 text-black rounded-2xl flex items-center justify-center transition-all active:scale-95"
                   >
@@ -332,6 +383,120 @@ export const CustomerView = () => {
               )}
             </div>
           </motion.div>
+        )}
+
+        {isCallbackModalOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-[#121214] border border-blue-500/30 p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-white font-black text-xl flex items-center gap-2">
+                  <PhoneCall className="w-6 h-6 text-blue-400" /> Request a
+                  Callback
+                </h3>
+                <button
+                  onClick={() => setIsCallbackModalOpen(false)}
+                  className="text-zinc-500 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-zinc-400 text-sm mb-6">
+                We'll have an expert reach out to you directly. Please provide
+                some details.
+              </p>
+
+              <form onSubmit={handleCallbackSubmit} className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
+                    Issue Category
+                  </label>
+                  <select
+                    required
+                    value={callbackData.issueCategory}
+                    onChange={(e) =>
+                      setCallbackData({
+                        ...callbackData,
+                        issueCategory: e.target.value,
+                      })
+                    }
+                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Payment / Billing">Payment / Billing</option>
+                    <option value="Safety Incident">Safety Incident</option>
+                    <option value="Driver Behavior">Driver Behavior</option>
+                    <option value="Lost Item">Lost Item</option>
+                    <option value="Account Issue">Account Issue</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
+                    Preferred Time
+                  </label>
+                  <select
+                    required
+                    value={callbackData.preferredTime}
+                    onChange={(e) =>
+                      setCallbackData({
+                        ...callbackData,
+                        preferredTime: e.target.value,
+                      })
+                    }
+                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">Select...</option>
+                    <option value="ASAP">As Soon As Possible</option>
+                    <option value="Morning (9AM - 12PM)">
+                      Morning (9AM - 12PM)
+                    </option>
+                    <option value="Afternoon (12PM - 4PM)">
+                      Afternoon (12PM - 4PM)
+                    </option>
+                    <option value="Evening (4PM - 8PM)">
+                      Evening (4PM - 8PM)
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
+                    Additional Notes
+                  </label>
+                  <textarea
+                    value={callbackData.notes}
+                    onChange={(e) =>
+                      setCallbackData({
+                        ...callbackData,
+                        notes: e.target.value,
+                      })
+                    }
+                    placeholder="Please describe the issue..."
+                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500 h-24 resize-none"
+                  ></textarea>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setIsCallbackModalOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
+                  >
+                    Request Call
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

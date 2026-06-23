@@ -1,4 +1,10 @@
-import { GlobalDatabase, Agent, AdminUser, Employee } from "../types";
+import {
+  GlobalDatabase,
+  Agent,
+  AdminUser,
+  Employee,
+  CallbackRequest,
+} from "../types";
 
 export const agentsList: Agent[] = [
   {
@@ -104,6 +110,22 @@ export const employeesList: Employee[] = [
   },
 ];
 
+export const callbackRequestsList: CallbackRequest[] = [
+  {
+    id: "CB-1001",
+    customerId: "CUST-002",
+    customerName: "Priya Patel",
+    phone: "+91 99999 88888",
+    issueCategory: "Payment Issue",
+    preferredTime: "ASAP",
+    notes: "Overcharged on last ride",
+    priority: "P2 - High",
+    status: "Callback Requested",
+    assignedTo: null,
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export const initialDb: GlobalDatabase = {
   currentUser: {
     id: "CUST-001",
@@ -124,6 +146,7 @@ export const initialDb: GlobalDatabase = {
   },
   tickets: [],
   messages: [],
+  callbackRequests: callbackRequestsList,
   customers: {
     "CUST-001": {
       id: "CUST-001",

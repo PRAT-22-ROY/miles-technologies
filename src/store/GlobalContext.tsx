@@ -9,6 +9,7 @@ import {
   DriverApplication,
   Ticket,
   ActiveDriver,
+  CallbackRequest,
 } from "../types";
 
 export const GlobalContext = createContext<any>(null);
@@ -97,8 +98,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         ticketId,
         senderId: "SYSTEM_AI",
         senderType: "ai" as const,
-        text: "All agents are busy right now. Please leave an email to roypratik2000@gmail.com and our team will reach out to you shortly.",
+        text: "All agents are busy right now. Please leave an email to support@miles.com and our team will reach out to you shortly.",
         timestamp: new Date().toISOString(),
+        actionRequired: "Callback" as const,
       };
       setDb((prev) => ({
         ...prev,
@@ -114,12 +116,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setIsTyping(true);
     setTimeout(() => {
-      const isRouteIssue = text
-        .toLowerCase()
-        .match(/(route|long|extra|overcharge|fare|payment)/);
-      const isEscalation = text
-        .toLowerCase()
-        .match(/(agent|human|talk|real person|support)/);
+      const lowerText = text.toLowerCase();
+      const isRouteIssue = lowerText.match(
+        /(route|long|extra|overcharge|fare|payment|deducted twice|double)/,
+      );
+      const isRudeIssue = lowerText.match(
+        /(rude|behavior|bad|angry|yelling|unprofessional)/,
+      );
+      const isEscalation = lowerText.match(
+        /(agent|human|talk|real person|support|escalate|not happy)/,
+      );
 
       if (isRouteIssue) {
         const msg1 = {
@@ -127,17 +133,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           ticketId,
           senderId: "SYSTEM_AI",
           senderType: "ai" as const,
-          text: "Analyzing your recent trip telemetry and GPS logs...",
+          text: `Thank you for reaching out, ${db.currentUser.name.split(" ")[0]}. I checked your recent ride with ${db.recentRide.driver} and understand that you're reporting a possible fare/route issue. Let me gather some details while I review this for you.`,
           timestamp: new Date().toISOString(),
         };
         setDb((prev) => ({ ...prev, messages: [...prev.messages, msg1] }));
 
         setTimeout(() => {
-          const aiText = `I analyzed your ride from ${db.recentRide.from} to ${db.recentRide.to}. Our GPS data shows a 2.8km deviation due to traffic avoidance, which added ₹45 to your fare. I am routing this to a live agent to finalize your refund.`;
+          const aiText = `I analyzed your ride from ${db.recentRide.from} to ${db.recentRide.to}. Our GPS data shows a deviation, which affected your fare. I am routing this to a live agent to finalize your refund.`;
           const aiInsights = {
             confidenceScore: 94,
-            analysis: `GPS telemetry confirms a 2.8km deviation from the optimal route from ${db.recentRide.from}. Traffic data does not justify the detour time. High customer loyalty detected.`,
-            recommendedAction: "Issue partial refund of ₹45.00",
+            analysis: `GPS telemetry confirms a deviation from the optimal route from ${db.recentRide.from}. High customer loyalty detected.`,
+            recommendedAction: "Issue partial refund",
             fraudRisk: "Low",
           };
 
@@ -171,7 +177,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
               t.id === ticketId
                 ? {
                     ...t,
-                    status: assignedAgentId ? "in_progress" : "open",
+                    status: assignedAgentId ? "In Progress" : "Open",
                     assignedTo: assignedAgentId,
                     aiInsights,
                     issueType: "Incident",
@@ -182,9 +188,37 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           }));
           setIsTyping(false);
         }, 2500);
+      } else if (isRudeIssue) {
+        const aiText =
+          "I'm sorry to hear about your experience. I've recorded this feedback and created a priority support request for our safety team to review.";
+        const msg = {
+          id: generateId("MSG"),
+          ticketId,
+          senderId: "SYSTEM_AI",
+          senderType: "ai" as const,
+          text: aiText,
+          timestamp: new Date().toISOString(),
+          actionRequired: "Escalate" as const,
+        };
+
+        setDb((prev) => ({
+          ...prev,
+          messages: [...prev.messages, msg],
+          tickets: prev.tickets.map((t) =>
+            t.id === ticketId
+              ? {
+                  ...t,
+                  status: "Open",
+                  priority: "P1 - Critical",
+                  category: "Safety",
+                }
+              : t,
+          ),
+        }));
+        setIsTyping(false);
       } else if (isEscalation) {
         const aiText =
-          "I am transferring you to our live MILES specialists. They will join this chat instantly.";
+          "I am transferring you to our live MILES specialists. They will join this chat shortly. If you prefer, you can also request a callback.";
         const onlineAgents = db.agents.filter((a) => a.status === "online");
         const assignedAgentId =
           onlineAgents.length > 0 ? onlineAgents[0].id : null;
@@ -196,6 +230,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           senderType: "ai" as const,
           text: aiText,
           timestamp: new Date().toISOString(),
+          actionRequired: "Escalate" as const,
         };
         const sysMsg = {
           id: generateId("MSG"),
@@ -215,7 +250,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             t.id === ticketId
               ? {
                   ...t,
-                  status: assignedAgentId ? "in_progress" : "open",
+                  status: assignedAgentId ? "In Progress" : "Open",
                   assignedTo: assignedAgentId,
                   priority: "P3 - Medium",
                 }
@@ -278,6 +313,45 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     return newTicketId;
   };
 
+  const requestCallback = (data: any) => {
+    const cbReq: CallbackRequest = {
+      id: generateId("CB"),
+      customerId: db.currentUser.id,
+      customerName: db.currentUser.name,
+      phone: data.phone || db.currentUser.phone,
+      issueCategory: data.issueCategory,
+      preferredTime: data.preferredTime,
+      notes: data.notes,
+      priority: "P2 - High",
+      status: "Callback Requested",
+      assignedTo: null,
+      createdAt: new Date().toISOString(),
+    };
+    setDb((prev) => ({
+      ...prev,
+      callbackRequests: [cbReq, ...prev.callbackRequests],
+    }));
+    return cbReq.id;
+  };
+
+  const claimCallback = (cbId: string, agentId: string) => {
+    setDb((prev) => ({
+      ...prev,
+      callbackRequests: prev.callbackRequests.map((cb) =>
+        cb.id === cbId ? { ...cb, assignedTo: agentId, status: "Claimed" } : cb,
+      ),
+    }));
+  };
+
+  const updateCallbackStatus = (cbId: string, status: any) => {
+    setDb((prev) => ({
+      ...prev,
+      callbackRequests: prev.callbackRequests.map((cb) =>
+        cb.id === cbId ? { ...cb, status } : cb,
+      ),
+    }));
+  };
+
   const sendMessage = (
     ticketId: string,
     senderId: string,
@@ -298,7 +372,33 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       text,
       timestamp: new Date().toISOString(),
     };
-    setDb((prev) => ({ ...prev, messages: [...prev.messages, newMessage] }));
+    setDb((prev) => {
+      const ticket = prev.tickets.find((t) => t.id === ticketId);
+      let newTickets = prev.tickets;
+
+      // If customer replies, change status if it was waiting
+      if (
+        senderType === "customer" &&
+        ticket?.status === "Waiting For Customer"
+      ) {
+        newTickets = newTickets.map((t) =>
+          t.id === ticketId ? { ...t, status: "In Progress" } : t,
+        );
+      }
+      // If agent replies to customer, change status
+      if (senderType === "agent" && ticket?.status === "Open") {
+        newTickets = newTickets.map((t) =>
+          t.id === ticketId ? { ...t, status: "Waiting For Customer" } : t,
+        );
+      }
+
+      return {
+        ...prev,
+        messages: [...prev.messages, newMessage],
+        tickets: newTickets,
+      };
+    });
+
     if (senderType === "customer") {
       const ticket = db.tickets.find((t) => t.id === ticketId);
       if (ticket && ticket.status === "ai_handling")
@@ -311,7 +411,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       ...prev,
       tickets: prev.tickets.map((t) =>
         t.id === ticketId
-          ? { ...t, assignedTo: agentId, status: "in_progress" }
+          ? { ...t, assignedTo: agentId, status: "In Progress" }
           : t,
       ),
     }));
@@ -330,7 +430,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           ? {
               ...t,
               isCallRequested: true,
-              status: "open",
+              status: "Open",
               priority: "P1 - Critical",
               issueType: "Incident",
             }
@@ -379,13 +479,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const endChatCustomer = (ticketId: string) => {
-    updateTicketStatus(ticketId, "resolved");
+    updateTicketStatus(ticketId, "Resolved");
     addSystemAction(ticketId, `Chat ended by customer.`);
     setCustomerActiveTicketId(null);
   };
 
   const endChatAgent = (ticketId: string, agentName: string) => {
-    updateTicketStatus(ticketId, "resolved");
+    updateTicketStatus(ticketId, "Resolved");
     addSystemAction(ticketId, `Issue resolved. Chat ended by ${agentName}.`);
   };
 
@@ -764,6 +864,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         addTeamMember,
         updateTeamMember,
         separateEmployee,
+        requestCallback,
+        claimCallback,
+        updateCallbackStatus,
       }}
     >
       {children}
