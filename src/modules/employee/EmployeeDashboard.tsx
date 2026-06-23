@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Car, X, FileText } from "lucide-react";
+import {
+  Plus,
+  Car,
+  X,
+  FileText,
+  Users,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
 import { useGlobalContext } from "../../hooks/useGlobalContext";
 import { Button } from "../../components/ui/Button";
 
@@ -12,6 +20,8 @@ export const EmployeeDashboard = () => {
     updateTaskStatus,
     addTask,
     updateDriverApp,
+    advanceApproval,
+    rejectApproval,
   } = useGlobalContext();
   const [activeTab, setActiveTab] = useState("tasks");
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -22,6 +32,10 @@ export const EmployeeDashboard = () => {
     reason: "",
   });
   const [selectedDriver, setSelectedDriver] = useState<any>(null);
+
+  const isManager =
+    currentEmployee?.permissions?.admin?.includes("Team Management") ||
+    currentEmployee?.role.toLowerCase().includes("manager");
 
   const handleLeaveSubmit = () => {
     requestLeaveWFH(leaveData.type, leaveData.date, leaveData.reason);
@@ -37,6 +51,17 @@ export const EmployeeDashboard = () => {
     }
   };
 
+  const tabs = [
+    { id: "tasks", label: "Tasks Board" },
+    { id: "drivers", label: "Driver Verification" },
+    { id: "leave", label: "Leave / WFH" },
+  ];
+
+  if (isManager) {
+    tabs.unshift({ id: "manager_overview", label: "Manager Overview" });
+    tabs.unshift({ id: "manager_approvals", label: "Manager Approvals" });
+  }
+
   return (
     <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-[#050505] relative p-2 md:p-6">
       <div className="flex-1 flex flex-col h-full bg-[#0A0A0A] border border-blue-500/20 rounded-[2rem] shadow-2xl overflow-hidden z-10">
@@ -44,16 +69,12 @@ export const EmployeeDashboard = () => {
           <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-6">
             Team Workspace
           </h1>
-          <div className="flex gap-4 border-b border-white/10">
-            {[
-              { id: "tasks", label: "Tasks Board" },
-              { id: "drivers", label: "Driver Verification" },
-              { id: "leave", label: "Leave / WFH" },
-            ].map((tab) => (
+          <div className="flex gap-4 border-b border-white/10 overflow-x-auto pb-1">
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-1 py-3 text-sm font-bold transition-all relative ${activeTab === tab.id ? "text-blue-500" : "text-zinc-500 hover:text-white"}`}
+                className={`px-1 py-3 text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === tab.id ? "text-blue-500" : "text-zinc-500 hover:text-white"}`}
               >
                 {tab.label}
                 {activeTab === tab.id && (
@@ -68,6 +89,226 @@ export const EmployeeDashboard = () => {
         </div>
 
         <div className="flex-1 overflow-auto bg-[#050505] p-6">
+          {activeTab === "manager_overview" && isManager && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-500" /> Team Overview
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="bg-[#121214] border border-white/5 p-5 rounded-2xl shadow-lg">
+                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-tight">
+                    Total Members
+                  </span>
+                  <span className="text-3xl font-black mt-3 text-blue-400 block">
+                    {db.employees.length}
+                  </span>
+                </div>
+                <div className="bg-[#121214] border border-white/5 p-5 rounded-2xl shadow-lg">
+                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-tight">
+                    Online Today
+                  </span>
+                  <span className="text-3xl font-black mt-3 text-green-400 block">
+                    {
+                      db.employees.filter((e: any) => e.status === "online")
+                        .length
+                    }
+                  </span>
+                </div>
+                <div className="bg-[#121214] border border-white/5 p-5 rounded-2xl shadow-lg">
+                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-tight">
+                    Pending Tasks
+                  </span>
+                  <span className="text-3xl font-black mt-3 text-orange-400 block">
+                    {db.tasks.filter((t: any) => t.status !== "done").length}
+                  </span>
+                </div>
+              </div>
+
+              <h3 className="text-white font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-500" /> Team Directory &
+                Attendance
+              </h3>
+              <table className="w-full text-left border-collapse bg-[#121214] rounded-2xl overflow-hidden border border-white/5">
+                <thead className="bg-[#0A0A0A] border-b border-white/5">
+                  <tr>
+                    <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                      Name
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                      Role
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {db.employees.map((emp: any) => (
+                    <tr key={emp.id}>
+                      <td className="px-4 py-3 font-bold text-white text-sm">
+                        {emp.name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-zinc-400">
+                        {emp.role}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded ${emp.status === "online" ? "bg-green-500/10 text-green-400" : "bg-zinc-500/10 text-zinc-400"}`}
+                        >
+                          {emp.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === "manager_approvals" && isManager && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-blue-500" /> Pending
+                Approvals
+              </h2>
+              <div className="space-y-4">
+                {db.onboardingRequests.filter(
+                  (r: any) => r.status === "pending_manager",
+                ).length === 0 &&
+                db.driverApplications.filter(
+                  (r: any) => r.status === "pending_manager",
+                ).length === 0 &&
+                db.contractors.filter(
+                  (r: any) => r.status === "pending_manager",
+                ).length === 0 ? (
+                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest text-center py-4 bg-[#121214] rounded-2xl border border-white/5">
+                    No pending approvals
+                  </p>
+                ) : (
+                  <>
+                    {db.onboardingRequests
+                      .filter((r: any) => r.status === "pending_manager")
+                      .map((req: any) => (
+                        <div
+                          key={req.id}
+                          className="bg-[#121214] p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                        >
+                          <div>
+                            <p className="text-white font-bold text-lg">
+                              {req.name}{" "}
+                              <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded ml-2 uppercase">
+                                {req.type} Onboarding
+                              </span>
+                            </p>
+                            <p className="text-sm text-zinc-400 mt-1">
+                              {req.role} • {req.department}
+                            </p>
+                          </div>
+                          <div className="flex gap-3 w-full md:w-auto">
+                            <Button
+                              variant="danger"
+                              onClick={() => rejectApproval("Intern", req.id)}
+                              className="flex-1 md:flex-none h-10 px-4 py-0 text-xs"
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                advanceApproval("Intern", req.id, req.status)
+                              }
+                              className="flex-1 md:flex-none h-10 px-4 py-0 text-xs !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
+                            >
+                              Approve & Send to HR
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    {db.contractors
+                      .filter((r: any) => r.status === "pending_manager")
+                      .map((req: any) => (
+                        <div
+                          key={req.id}
+                          className="bg-[#121214] p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                        >
+                          <div>
+                            <p className="text-white font-bold text-lg">
+                              {req.name}{" "}
+                              <span className="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded ml-2 uppercase">
+                                Contractor Onboarding
+                              </span>
+                            </p>
+                            <p className="text-sm text-zinc-400 mt-1">
+                              {req.type}
+                            </p>
+                          </div>
+                          <div className="flex gap-3 w-full md:w-auto">
+                            <Button
+                              variant="danger"
+                              onClick={() =>
+                                rejectApproval("Contractor", req.id)
+                              }
+                              className="flex-1 md:flex-none h-10 px-4 py-0 text-xs"
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                advanceApproval(
+                                  "Contractor",
+                                  req.id,
+                                  req.status,
+                                )
+                              }
+                              className="flex-1 md:flex-none h-10 px-4 py-0 text-xs !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
+                            >
+                              Approve & Send to HR
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    {db.driverApplications
+                      .filter((r: any) => r.status === "pending_manager")
+                      .map((req: any) => (
+                        <div
+                          key={req.id}
+                          className="bg-[#121214] p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                        >
+                          <div>
+                            <p className="text-white font-bold text-lg">
+                              {req.name}{" "}
+                              <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded ml-2 uppercase">
+                                Driver Onboarding
+                              </span>
+                            </p>
+                            <p className="text-sm text-zinc-400 mt-1">
+                              {req.vehicle} • {req.phone}
+                            </p>
+                          </div>
+                          <div className="flex gap-3 w-full md:w-auto">
+                            <Button
+                              variant="danger"
+                              onClick={() => rejectApproval("Driver", req.id)}
+                              className="flex-1 md:flex-none h-10 px-4 py-0 text-xs"
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                advanceApproval("Driver", req.id, req.status)
+                              }
+                              className="flex-1 md:flex-none h-10 px-4 py-0 text-xs !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
+                            >
+                              Approve & Send to HR
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === "tasks" && (
             <div className="space-y-6">
               <form onSubmit={handleAddTask} className="flex gap-3">
@@ -158,14 +399,14 @@ export const EmployeeDashboard = () => {
               </h3>
               <div className="grid gap-4">
                 {db.driverApplications.filter(
-                  (d: any) => d.status === "pending",
+                  (d: any) => d.status === "pending_manager",
                 ).length === 0 ? (
                   <div className="p-12 text-center text-zinc-600 font-bold uppercase tracking-widest bg-[#0A0A0A] rounded-2xl border border-white/5">
                     No pending verifications
                   </div>
                 ) : (
                   db.driverApplications
-                    .filter((d: any) => d.status === "pending")
+                    .filter((d: any) => d.status === "pending_manager")
                     .map((drv: any) => (
                       <div
                         key={drv.id}
@@ -366,7 +607,7 @@ export const EmployeeDashboard = () => {
                 <Button
                   variant="danger"
                   onClick={() => {
-                    updateDriverApp(selectedDriver.id, "rejected");
+                    updateDriverApp(selectedDriver.id, { status: "rejected" });
                     setSelectedDriver(null);
                   }}
                   className="flex-1 h-10"
@@ -375,12 +616,14 @@ export const EmployeeDashboard = () => {
                 </Button>
                 <Button
                   onClick={() => {
-                    updateDriverApp(selectedDriver.id, "pending_manager");
+                    updateDriverApp(selectedDriver.id, {
+                      status: "pending_hr",
+                    });
                     setSelectedDriver(null);
                   }}
                   className="flex-[2] h-10 !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
                 >
-                  Verify & Send to Manager
+                  Verify & Send to HR
                 </Button>
               </div>
             </motion.div>

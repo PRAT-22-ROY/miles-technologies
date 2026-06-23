@@ -56,34 +56,71 @@ export interface Message {
   timestamp: string;
 }
 
+export interface Permissions {
+  dashboard: string[];
+  hr: string[];
+  operations: string[];
+  support: string[];
+  admin: string[];
+}
+
 export interface Employee {
   id: string;
   name: string;
+  email?: string;
+  phone?: string;
+  employeeId?: string;
   role: string;
   department: string;
   leaveBalance: number;
   workType: string;
+  employmentType?: "Intern" | "Full Time" | "Contractor";
+  accountStatus?: "Active" | "Inactive";
   status: "offline" | "online";
+  permissions?: Permissions;
   clockInTime?: string;
   clockOutTime?: string;
 }
+
+export type DriverStatus =
+  | "applied"
+  | "documents_uploaded"
+  | "pending_manager"
+  | "pending_hr"
+  | "assigned_ops"
+  | "ops_review"
+  | "training"
+  | "approved"
+  | "rejected"
+  | "active"
+  | "inactive";
 
 export interface DriverApplication {
   id: string;
   name: string;
   phone: string;
   vehicle: string;
-  status: string;
+  status: DriverStatus;
   submittedAt: string;
+  assignedOpsExecutive?: string;
+  documentsStatus?: string;
+  vehicleVerification?: string;
+  insuranceVerification?: string;
+  trainingStatus?: string;
 }
 
 export interface OnboardingRequest {
   id: string;
   name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
   role: string;
   department: string;
-  type: string;
+  type: string; // 'Intern' | 'Contractor' | 'Full Time'
   status: string;
+  reportingManager?: string;
+  joiningDate?: string;
 }
 
 export interface Contractor {
