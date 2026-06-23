@@ -21,6 +21,24 @@ export const TopNav = () => {
     endShift,
   } = useGlobalContext();
 
+  const handleLogout = () => {
+      endShift(currentAgent, currentEmployee);
+
+      // Specifically handle logout logic for each user type without relying exclusively on activeMode
+      // This is because an Admin could be in the Employee tab or vice versa.
+      // We clear the state corresponding to the active mode to successfully "Log Out"
+      if (activeMode === "agent") {
+          setCurrentAgent(null);
+      } else if (activeMode === "employee") {
+          setCurrentEmployee(null);
+      } else if (activeMode === "admin") {
+          setIsAdminLogged(false);
+          setCurrentAdmin(null);
+      } else if (activeMode === "driver") {
+          setCurrentEmployee(null); // Because ops executives access driver portal
+      }
+  };
+
   return (
     <nav className="fixed top-0 left-0 w-full h-16 bg-[#050505]/80 backdrop-blur-2xl border-b border-white/10 z-[60] flex items-center px-4 md:px-8">
       {/* LEFT: Logo (Fixed Width) */}
@@ -93,16 +111,7 @@ export const TopNav = () => {
                 </div>
               )}
             <button
-              onClick={() => {
-                endShift(currentAgent, currentEmployee);
-                if (activeMode === "agent") setCurrentAgent(null);
-                if (activeMode === "employee" || activeMode === "driver")
-                  setCurrentEmployee(null);
-                if (activeMode === "admin") {
-                  setIsAdminLogged(false);
-                  setCurrentAdmin(null);
-                }
-              }}
+              onClick={handleLogout}
               className="px-3 sm:px-4 h-10 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-500 text-red-500 hover:text-white rounded-xl transition-all flex items-center justify-center gap-2 group active:scale-95 w-10 md:w-28 shrink-0 overflow-hidden"
             >
               <LogOut className="w-4 h-4 group-hover:animate-pulse shrink-0" />
