@@ -25,6 +25,18 @@ export interface Customer {
   joined: string;
 }
 
+export type TicketStatus =
+  | "Submitted"
+  | "Open"
+  | "Assigned"
+  | "In Progress"
+  | "Waiting For Customer"
+  | "Escalated"
+  | "Resolved"
+  | "Closed"
+  | "ai_handling"
+  | "offline_queued";
+
 export interface Ticket {
   id: string;
   customerId?: string; // Optional for driver applications
@@ -32,7 +44,7 @@ export interface Ticket {
   category: string;
   priority: string;
   subject: string;
-  status: string;
+  status: TicketStatus | string;
   createdAt: string;
   assignedTo: string | null;
   assignedTeam?: string; // Support, Verification, Operations, Training
@@ -40,6 +52,22 @@ export interface Ticket {
   aiInsights?: AIInsights | null;
   environment?: string;
   applicationId?: string; // Link to DriverApplication
+}
+
+export interface CallbackRequest {
+  id: string;
+  customerId: string;
+  customerName: string;
+  phone: string;
+  issueCategory: string;
+  preferredTime: string;
+  notes: string;
+  priority: string;
+  ticketId?: string;
+  rideId?: string;
+  status: "Callback Requested" | "Claimed" | "In Progress" | "Closed";
+  assignedTo: string | null;
+  createdAt: string;
 }
 
 export interface AIInsights {
@@ -56,6 +84,7 @@ export interface Message {
   senderType: "customer" | "agent" | "ai" | "system" | "internal" | "applicant";
   text: string;
   timestamp: string;
+  actionRequired?: "Escalate" | "Callback" | "Provide Info" | null;
 }
 
 export interface Permissions {
@@ -77,7 +106,7 @@ export interface Employee {
   leaveBalance: number;
   workType: string;
   employmentType?: "Intern" | "Full Time" | "Contractor";
-  accountStatus?: "Active" | "Inactive";
+  accountStatus?: "Active" | "Inactive" | "Separated";
   status: "offline" | "online";
   permissions?: Permissions;
   clockInTime?: string;
@@ -86,6 +115,7 @@ export interface Employee {
 
 export type DriverStatus =
   | "Submitted"
+  | "Documents Uploaded"
   | "HR Review"
   | "Assigned"
   | "In Progress"
@@ -130,7 +160,7 @@ export interface DriverApplication {
   ifscCode: string;
 
   // Workflow
-  status: DriverStatus;
+  status: DriverStatus | string;
   submittedAt: string;
   assignedOpsExecutive?: string;
   assignedTeam?: string;
@@ -208,6 +238,7 @@ export interface GlobalDatabase {
   recentRide: RecentRide;
   tickets: Ticket[];
   messages: Message[];
+  callbackRequests: CallbackRequest[];
   customers: Record<string, Customer>;
   adminUsers: AdminUser[];
   agents: Agent[];
