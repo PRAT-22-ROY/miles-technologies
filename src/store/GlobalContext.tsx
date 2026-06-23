@@ -464,24 +464,82 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         newState.onboardingRequests = updater(prev.onboardingRequests);
         if (nextStatus === "approved") {
           const req = prev.onboardingRequests.find((r) => r.id === id)!;
-          newState.employees = [
-            ...prev.employees,
-            {
-              id: generateId("EMP"),
-              name: req.name,
-              role: req.role,
-              department: req.department,
-              leaveBalance: type === "Full Time" ? 20 : 5,
-              workType: "Office",
-              status: "offline",
-              employmentType: type as any,
-              accountStatus: "Active",
+
+          // Auto generate Employee ID
+          const hash = generateId("").split("-")[1];
+          let newEmpId = "";
+          if (type === "Full Time") newEmpId = `ML-${hash}`;
+          if (type === "Intern") newEmpId = `INT-${hash}`;
+
+          const newEmp: Employee = {
+            id: generateId("EMP"),
+            name: req.name,
+            role: req.role,
+            department: req.department,
+            employeeId: newEmpId,
+            leaveBalance: type === "Full Time" ? 20 : 5,
+            workType: "Office",
+            status: "offline",
+            employmentType: type as any,
+            accountStatus: "Active",
+            permissions: {
+              dashboard: [],
+              hr: [],
+              operations: [],
+              support: [],
+              admin: [],
             },
-          ];
+          };
+
+          newState.employees = [...prev.employees, newEmp];
+
+          // Auto create agent if Support
+          if (
+            newEmp.department === "Support" ||
+            newEmp.role.includes("Support")
+          ) {
+            newState.agents = [
+              ...prev.agents,
+              {
+                id: generateId("AGT"),
+                name: newEmp.name,
+                role: newEmp.role,
+                email: req.email || `${newEmp.name.toLowerCase()}@miles.com`,
+                status: "offline",
+              },
+            ];
+          }
         }
       }
-      if (type === "Contractor")
+      if (type === "Contractor") {
         newState.contractors = updater(prev.contractors);
+        if (nextStatus === "approved") {
+          const req = prev.contractors.find((r) => r.id === id)!;
+          const hash = generateId("").split("-")[1];
+          const newEmpId = `CT-${hash}`;
+
+          const newEmp: Employee = {
+            id: generateId("EMP"),
+            name: req.name,
+            role: req.type,
+            department: "External",
+            employeeId: newEmpId,
+            leaveBalance: 0,
+            workType: "Remote",
+            status: "offline",
+            employmentType: "Contractor",
+            accountStatus: "Active",
+            permissions: {
+              dashboard: [],
+              hr: [],
+              operations: [],
+              support: [],
+              admin: [],
+            },
+          };
+          newState.employees = [...prev.employees, newEmp];
+        }
+      }
       return newState;
     });
   };
@@ -586,12 +644,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addTeamMember = (data: Partial<Employee>) => {
+    let prefix = "ML";
+    if (data.employmentType === "Intern") prefix = "INT";
+    if (data.employmentType === "Contractor") prefix = "CT";
+    const hash = generateId("").split("-")[1];
+
     const newEmp: Employee = {
       id: generateId("EMP"),
       name: data.name || "",
       email: data.email,
       phone: data.phone,
-      employeeId: data.employeeId,
+      employeeId: data.employeeId || `${prefix}-${hash}`,
       role: data.role || "Employee",
       department: data.department || "General",
       leaveBalance: data.employmentType === "Intern" ? 5 : 20,
@@ -607,7 +670,26 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         admin: [],
       },
     };
-    setDb((prev) => ({ ...prev, employees: [...prev.employees, newEmp] }));
+
+    setDb((prev) => {
+      const newState = { ...prev, employees: [...prev.employees, newEmp] };
+      if (
+        newEmp.department === "Support" ||
+        newEmp.permissions?.support?.length
+      ) {
+        newState.agents = [
+          ...prev.agents,
+          {
+            id: generateId("AGT"),
+            name: newEmp.name,
+            role: newEmp.role,
+            email: newEmp.email || `${newEmp.name.toLowerCase()}@miles.com`,
+            status: "offline",
+          },
+        ];
+      }
+      return newState;
+    });
   };
 
   const updateTeamMember = (id: string, data: Partial<Employee>) => {
@@ -617,6 +699,24 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         e.id === id ? { ...e, ...data } : e,
       ),
     }));
+  };
+
+  const separateEmployee = (id: string) => {
+    setDb((prev) => {
+      const empToSeparate = prev.employees.find((e) => e.id === id);
+      if (!empToSeparate) return prev;
+
+      return {
+        ...prev,
+        employees: prev.employees.map((e) =>
+          e.id === id ? { ...e, accountStatus: "Separated" as any } : e,
+        ),
+        agents: prev.agents.filter(
+          (a) =>
+            a.name !== empToSeparate.name && a.email !== empToSeparate.email,
+        ),
+      };
+    });
   };
 
   return (
@@ -663,6 +763,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         submitDriverApplication,
         addTeamMember,
         updateTeamMember,
+        separateEmployee,
       }}
     >
       {children}

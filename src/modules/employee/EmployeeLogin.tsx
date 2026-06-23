@@ -12,11 +12,12 @@ export const EmployeeLogin = () => {
 
   const filteredEmployees = db.employees.filter(
     (emp: any) =>
-      emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (emp.email &&
-        emp.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (emp.employeeId &&
-        emp.employeeId.toLowerCase().includes(searchQuery.toLowerCase())),
+      emp.accountStatus === "Active" &&
+      (emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (emp.email &&
+          emp.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (emp.employeeId &&
+          emp.employeeId.toLowerCase().includes(searchQuery.toLowerCase()))),
   );
 
   return (
@@ -49,7 +50,7 @@ export const EmployeeLogin = () => {
         <div className="space-y-4 overflow-y-auto flex-1 pr-2">
           {filteredEmployees.length === 0 ? (
             <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest text-center py-4">
-              No employees found
+              No active employees found
             </p>
           ) : (
             filteredEmployees.map((emp: any, i: number) => (

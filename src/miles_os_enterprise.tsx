@@ -11,8 +11,7 @@ import { EmployeeDashboard } from "./modules/employee/EmployeeDashboard";
 import { GateShift } from "./modules/employee/GateShift";
 import { AdminLogin } from "./modules/admin/AdminLogin";
 import { AdminDashboard } from "./modules/admin/AdminDashboard";
-import { DriverLogin } from "./modules/driver/DriverLogin";
-import { DriverDashboard } from "./modules/driver/DriverDashboard";
+import { DriverPortal } from "./modules/driver/DriverPortal";
 import "./index.css";
 
 import { createRoot } from "react-dom/client";
@@ -65,13 +64,7 @@ const MainApp = () => {
           {activeMode === "admin" && !isAdminLogged && <AdminLogin />}
           {activeMode === "admin" && isAdminLogged && <AdminDashboard />}
 
-          {activeMode === "driver" && !currentEmployee && <DriverLogin />}
-          {activeMode === "driver" &&
-            currentEmployee &&
-            shiftStatus === "offline" && <GateShift userType="employee" />}
-          {activeMode === "driver" &&
-            currentEmployee &&
-            shiftStatus !== "offline" && <DriverDashboard />}
+          {activeMode === "driver" && <DriverPortal />}
         </motion.div>
       </AnimatePresence>
     </div>

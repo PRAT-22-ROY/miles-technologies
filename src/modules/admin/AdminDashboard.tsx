@@ -18,6 +18,7 @@ import {
   Check,
   X,
   FileText,
+  UserMinus,
 } from "lucide-react";
 import { useGlobalContext } from "../../hooks/useGlobalContext";
 import { Button } from "../../components/ui/Button";
@@ -38,6 +39,7 @@ export const AdminDashboard = () => {
     updateTeamMember,
     updateDriverApp,
     addSystemAction,
+    separateEmployee,
   } = useGlobalContext();
   const [activeTab, setActiveTab] = useState("global");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export const AdminDashboard = () => {
   const [showContractorForm, setShowContractorForm] = useState(false);
   const [showFullTimeForm, setShowFullTimeForm] = useState(false);
   const [showAddTeamMemberForm, setShowAddTeamMemberForm] = useState(false);
+  const [employeeToSeparate, setEmployeeToSeparate] = useState<any>(null);
 
   const [selectedEmployeeForEdit, setSelectedEmployeeForEdit] =
     useState<any>(null);
@@ -105,6 +108,13 @@ export const AdminDashboard = () => {
       setSelectedDriverForReview(null);
       setSelectedOpsTeam("Operations");
       setAssignNotes("");
+    }
+  };
+
+  const handleConfirmSeparation = () => {
+    if (employeeToSeparate) {
+      separateEmployee(employeeToSeparate.id);
+      setEmployeeToSeparate(null);
     }
   };
 
@@ -201,12 +211,12 @@ export const AdminDashboard = () => {
                         label: "Attendance & Shifts",
                         icon: CalendarClock,
                       },
-                      {
-                        id: "compliance",
-                        label: "Compliance",
-                        icon: FileWarning,
-                      },
                       { id: "directory", label: "Team Directory", icon: Users },
+                      {
+                        id: "separations",
+                        label: "Separations",
+                        icon: UserMinus,
+                      },
                       {
                         id: "driver_apps",
                         label: "Driver Applications",
@@ -517,6 +527,81 @@ export const AdminDashboard = () => {
               </div>
             )}
 
+            {activeTab === "separations" && isHR && (
+              <div className="flex flex-col h-full">
+                <div className="p-6 md:p-8 border-b border-white/5 bg-gradient-to-r from-red-900/20 to-black shrink-0">
+                  <h2 className="text-2xl font-black text-white">
+                    Employee Separations
+                  </h2>
+                </div>
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-[#0A0A0A] sticky top-0 z-10 shadow-md">
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Employee
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Role & Type
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5 text-right">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {db.employees.filter(
+                      (e: any) => e.accountStatus !== "Separated",
+                    ).length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="p-12 text-center text-zinc-600 font-bold uppercase tracking-widest"
+                        >
+                          No active employees to separate
+                        </td>
+                      </tr>
+                    ) : (
+                      db.employees
+                        .filter((e: any) => e.accountStatus !== "Separated")
+                        .map((emp: any) => (
+                          <tr key={emp.id} className="hover:bg-white/[0.02]">
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-white text-sm">
+                                {emp.name}
+                              </div>
+                              <div className="text-xs text-zinc-500">
+                                {emp.employeeId} • {emp.email}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-xs text-zinc-300">
+                              {emp.role} • {emp.employmentType}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-zinc-300 px-2 py-1 rounded">
+                                {emp.accountStatus}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <Button
+                                variant="danger"
+                                onClick={() => setEmployeeToSeparate(emp)}
+                                className="h-8 px-4 py-0 text-xs shadow-none"
+                              >
+                                <UserMinus className="w-4 h-4 mr-2" /> Initiate
+                                Separation
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {activeTab === "team_management" && (
               <div className="p-6 md:p-8 flex flex-col h-full">
                 <div className="flex justify-between items-center mb-6">
@@ -560,7 +645,8 @@ export const AdminDashboard = () => {
                               {emp.name}
                             </div>
                             <div className="text-xs text-zinc-500">
-                              {emp.email} • {emp.employeeId}
+                              {emp.email}{" "}
+                              {emp.employeeId ? `• ${emp.employeeId}` : ""}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -576,41 +662,47 @@ export const AdminDashboard = () => {
                           </td>
                           <td className="px-4 py-3">
                             <span
-                              className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded ${emp.accountStatus === "Active" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}
+                              className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded ${emp.accountStatus === "Active" ? "bg-green-500/10 text-green-400" : emp.accountStatus === "Separated" ? "bg-red-500/10 text-red-400" : "bg-yellow-500/10 text-yellow-400"}`}
                             >
                               {emp.accountStatus}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => setSelectedEmployeeForEdit(emp)}
-                              className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
-                              title="Edit Member"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                updateTeamMember(emp.id, {
-                                  accountStatus:
+                            {emp.accountStatus !== "Separated" && (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    setSelectedEmployeeForEdit(emp)
+                                  }
+                                  className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
+                                  title="Edit Member"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    updateTeamMember(emp.id, {
+                                      accountStatus:
+                                        emp.accountStatus === "Active"
+                                          ? "Inactive"
+                                          : "Active",
+                                    })
+                                  }
+                                  className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors ml-2"
+                                  title={
                                     emp.accountStatus === "Active"
-                                      ? "Inactive"
-                                      : "Active",
-                                })
-                              }
-                              className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors ml-2"
-                              title={
-                                emp.accountStatus === "Active"
-                                  ? "Disable"
-                                  : "Activate"
-                              }
-                            >
-                              {emp.accountStatus === "Active" ? (
-                                <Trash className="w-4 h-4 text-red-400" />
-                              ) : (
-                                <Check className="w-4 h-4 text-green-400" />
-                              )}
-                            </button>
+                                      ? "Disable"
+                                      : "Activate"
+                                  }
+                                >
+                                  {emp.accountStatus === "Active" ? (
+                                    <Trash className="w-4 h-4 text-red-400" />
+                                  ) : (
+                                    <Check className="w-4 h-4 text-green-400" />
+                                  )}
+                                </button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -644,9 +736,6 @@ export const AdminDashboard = () => {
                         <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5 text-right">
-                          Actions
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -657,7 +746,8 @@ export const AdminDashboard = () => {
                               {emp.name}
                             </div>
                             <div className="text-xs text-zinc-500">
-                              {emp.email} • {emp.employeeId}
+                              {emp.email}{" "}
+                              {emp.employeeId ? `• ${emp.employeeId}` : ""}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -673,41 +763,10 @@ export const AdminDashboard = () => {
                           </td>
                           <td className="px-4 py-3">
                             <span
-                              className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded ${emp.accountStatus === "Active" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}
+                              className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded ${emp.accountStatus === "Active" ? "bg-green-500/10 text-green-400" : emp.accountStatus === "Separated" ? "bg-red-500/10 text-red-400" : "bg-yellow-500/10 text-yellow-400"}`}
                             >
                               {emp.accountStatus}
                             </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => setSelectedEmployeeForEdit(emp)}
-                              className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
-                              title="Edit Member"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                updateTeamMember(emp.id, {
-                                  accountStatus:
-                                    emp.accountStatus === "Active"
-                                      ? "Inactive"
-                                      : "Active",
-                                })
-                              }
-                              className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors ml-2"
-                              title={
-                                emp.accountStatus === "Active"
-                                  ? "Disable"
-                                  : "Activate"
-                              }
-                            >
-                              {emp.accountStatus === "Active" ? (
-                                <Trash className="w-4 h-4 text-red-400" />
-                              ) : (
-                                <Check className="w-4 h-4 text-green-400" />
-                              )}
-                            </button>
                           </td>
                         </tr>
                       ))}
@@ -897,11 +956,6 @@ export const AdminDashboard = () => {
                     placeholder: "+91...",
                   },
                   {
-                    name: "employeeId",
-                    label: "Employee ID",
-                    placeholder: "M-1004",
-                  },
-                  {
                     name: "department",
                     label: "Department",
                     type: "select",
@@ -1074,7 +1128,13 @@ export const AdminDashboard = () => {
                     name: "department",
                     label: "Department",
                     type: "select",
-                    options: ["Engineering", "Operations", "HR", "Marketing"],
+                    options: [
+                      "Engineering",
+                      "Operations",
+                      "HR",
+                      "Marketing",
+                      "Support",
+                    ],
                   },
                   {
                     name: "role",
@@ -1132,7 +1192,12 @@ export const AdminDashboard = () => {
                     name: "department",
                     label: "Department",
                     type: "select",
-                    options: ["Engineering", "Operations", "Marketing"],
+                    options: [
+                      "Engineering",
+                      "Operations",
+                      "Marketing",
+                      "Support",
+                    ],
                   },
                   {
                     name: "role",
@@ -1253,6 +1318,54 @@ export const AdminDashboard = () => {
                         className="flex-[2] h-10 !bg-blue-600 hover:!bg-blue-500 text-white shadow-none border-0"
                       >
                         Assign & Update Status
+                      </Button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+
+              {employeeToSeparate && (
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="bg-[#121214] border border-red-500/30 p-6 rounded-3xl w-full max-w-lg shadow-2xl"
+                  >
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-white font-black text-xl flex items-center gap-2">
+                        <UserMinus className="w-6 h-6 text-red-500" /> Confirm
+                        Separation
+                      </h3>
+                      <button
+                        onClick={() => setEmployeeToSeparate(null)}
+                        className="text-zinc-500 hover:text-white"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <p className="text-zinc-400 mb-6">
+                      Are you sure you want to permanently separate{" "}
+                      <strong className="text-white">
+                        {employeeToSeparate.name}
+                      </strong>{" "}
+                      from the organization? This will immediately revoke all
+                      access, including any agent dashboard logins.
+                    </p>
+
+                    <div className="flex gap-3">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setEmployeeToSeparate(null)}
+                        className="flex-1 h-12"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={handleConfirmSeparation}
+                        className="flex-1 h-12 border-0 bg-red-600 hover:bg-red-500 text-white font-bold"
+                      >
+                        Yes, Separate Employee
                       </Button>
                     </div>
                   </motion.div>
